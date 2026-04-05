@@ -229,7 +229,9 @@ class UniFiNetworkHAConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors.update(err)
             else:
                 self._sites = sites
-                return await self.async_step_cloud()
+                # Skip cloud step — it can be enabled later in options
+                self._data[CONF_CLOUD_ENABLED] = False
+                return await self.async_step_site()
 
         return self.async_show_form(
             step_id="api_key",
@@ -256,7 +258,9 @@ class UniFiNetworkHAConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors.update(err)
             else:
                 self._sites = sites
-                return await self.async_step_cloud()
+                # Skip cloud step — it can be enabled later in options
+                self._data[CONF_CLOUD_ENABLED] = False
+                return await self.async_step_site()
 
         return self.async_show_form(
             step_id="credentials",

@@ -312,7 +312,9 @@ async def async_setup_entry(
         for mac, device in hub.device_coordinator.devices.items():
             if not device.adopted:
                 continue
-            image_url = get_device_image_url(device.model)
+            # Only create image entities for models with verified CDN URLs.
+            # Fallback URLs (static.ui.com) often 404 and show broken images.
+            image_url = get_device_image_url(device.model, allow_fallback=False)
             if image_url:
                 entities.append(
                     UniFiDeviceImage(hass=hass, hub=hub, device=device)

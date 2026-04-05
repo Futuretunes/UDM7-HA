@@ -10,8 +10,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinators.base import UniFiDataUpdateCoordinator
-from .device_images import get_device_image_url
-
 if TYPE_CHECKING:
     from .hub import UniFiHub
 
@@ -73,17 +71,9 @@ class UniFiEntity(CoordinatorEntity[UniFiDataUpdateCoordinator]):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device registry information for this entity."""
-        info = DeviceInfo(
+        return DeviceInfo(
             identifiers={(DOMAIN, self._device_mac)},
             name=self._device_name,
             manufacturer=MANUFACTURER,
             model=self._device_model,
         )
-        # Add a configuration_url linking to the product image when available.
-        # Home Assistant does not natively support custom device images via
-        # DeviceInfo, but configuration_url gives users quick access to the
-        # product page / image.
-        image_url = get_device_image_url(self._device_model)
-        if image_url:
-            info["configuration_url"] = image_url
-        return info

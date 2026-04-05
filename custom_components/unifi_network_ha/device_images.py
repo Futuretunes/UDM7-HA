@@ -29,6 +29,58 @@ DEVICE_IMAGE_MAP: dict[str, tuple[str, str]] = {
         "c57b6e85-cf5b-48c8-9e92-9f25e4dd0f39.png",
         "Dream Router 7",
     ),
+    "UDR": (
+        "https://cdn.ecomm.ui.com/products/60459473-c989-41db-93f2-3c0f40df84f3/"
+        "b4fd2ae0-8d83-4ad0-ab4e-138d034a32f3.png",
+        "Dream Router",
+    ),
+    "UDM": (
+        "https://cdn.ecomm.ui.com/products/9585991f-2b82-411c-8f44-addb4711e4db/"
+        "efe7fc7e-907c-4997-ac52-807323c8fd41.png",
+        "Dream Machine",
+    ),
+    "UDMPRO": (
+        "https://cdn.ecomm.ui.com/products/9df27ed4-c4ae-471a-8982-f5b0650da76a/"
+        "2ede4300-385f-4043-8d96-e0400a22465f.png",
+        "Dream Machine Pro",
+    ),
+    "UDMSE": (
+        "https://cdn.ecomm.ui.com/products/1b6fcc08-a6b8-4496-a831-6125a47c412f/"
+        "1aaaac38-597b-4125-b0de-7a2671580b21.png",
+        "Dream Machine SE",
+    ),
+    "UDMPROMAXHD": (
+        "https://cdn.ecomm.ui.com/products/401190d7-6a49-4c2e-bef1-7fe087d2b6b6/"
+        "95713566-423f-45e1-8b40-6d760f048490.png",
+        "Dream Machine Pro Max",
+    ),
+    "UCG-Ultra": (
+        "https://cdn.ecomm.ui.com/products/8d2d9e4b-89f3-49a1-9c17-5d774c0067b4/"
+        "2e179331-f85a-4bc9-bf3e-d00192522732.png",
+        "Cloud Gateway Ultra",
+    ),
+    # Access Points
+    "U6-Pro": (
+        "https://cdn.ecomm.ui.com/products/8e88b222-7a55-4cf0-8677-ae9b6347fe84/"
+        "e16aa122-b5e5-4ffb-9f1a-27ee14d9ab3d.png",
+        "U6 Pro",
+    ),
+    "U6-Lite": (
+        "https://cdn.ecomm.ui.com/products/259686b4-ae75-411c-90bc-e4040e38ca56/"
+        "3dac99a9-6352-44f3-ac8b-ade89c707831.png",
+        "U6 Lite",
+    ),
+    # Switches
+    "USW-Flex": (
+        "https://cdn.ecomm.ui.com/products/c9a07d37-b390-4a5b-89c5-3cdab8e011c7/"
+        "4bcd3c2b-a8b1-4be1-baab-deda172291cd.png",
+        "Switch Flex",
+    ),
+    "USW-Flex-Mini": (
+        "https://cdn.ecomm.ui.com/products/5a176b22-af34-40f2-820c-958610df1825/"
+        "19394e07-5146-4f8c-b72d-7fdbdf679c97.png",
+        "Switch Flex Mini",
+    ),
 }
 
 # ---------------------------------------------------------------------------
@@ -117,6 +169,12 @@ MODEL_ALIASES: dict[str, str] = {
     "U6 Mesh": "U6-Mesh",
     "U6 IW": "U6-IW",
     "U6 Extender": "U6-Extender",
+    # Switch variants the API may report
+    "USW Flex": "USW-Flex",
+    "USW Flex Mini": "USW-Flex-Mini",
+    "USWFLEX": "USW-Flex",
+    "USWFLEXMINI": "USW-Flex-Mini",
+    "USW-Flex-2.5G-5": "USW-Flex",
 }
 
 # ---------------------------------------------------------------------------
@@ -148,16 +206,19 @@ def _resolve_model(model: str) -> str:
     return model
 
 
-def get_device_image_url(model: str) -> str | None:
+def get_device_image_url(model: str, allow_fallback: bool = True) -> str | None:
     """Return the product image URL for a UniFi device model.
 
     Args:
         model: The device model string from the API (e.g. ``"UDR7"``,
             ``"U6-Pro"``).
+        allow_fallback: If ``True`` (default), returns a best-effort
+            static.ui.com URL for unknown models. If ``False``, returns
+            ``None`` for models not in the verified map.
 
     Returns:
         A URL string pointing to a product image, or ``None`` if the
-        model is empty.
+        model is empty or unknown (when fallback is disabled).
     """
     if not model:
         return None
@@ -168,6 +229,9 @@ def get_device_image_url(model: str) -> str | None:
     entry = DEVICE_IMAGE_MAP.get(canonical)
     if entry:
         return entry[0]
+
+    if not allow_fallback:
+        return None
 
     # 2. Fallback to static.ui.com icon pattern
     model_id = canonical.lower().replace("-", "").replace(" ", "")
