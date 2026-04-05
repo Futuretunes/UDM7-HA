@@ -571,7 +571,10 @@ class UniFiFirewallPolicySwitch(CoordinatorEntity[UniFiDataUpdateCoordinator], S
         self._hub = hub
         self._policy_id = policy.id
         self._attr_unique_id = f"fw_policy_{policy.id}"
-        self._attr_name = f"Firewall {policy.display_name}"
+        self._policy_name = policy.name
+        self._policy_action = policy.action
+        # Name is set externally via set_sequence_name() after creation
+        self._attr_name = f"Firewall {policy.name}"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -618,6 +621,30 @@ class UniFiFirewallPolicySwitch(CoordinatorEntity[UniFiDataUpdateCoordinator], S
         await self._hub.v2.set_firewall_policy(self._policy_id, {"enabled": False})
         self._update_cache(enabled=False)
         self.async_write_ha_state()
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose raw policy fields for debugging."""
+        cache: dict[str, FirewallPolicy] | None = getattr(
+            self._hub, "_fw_policy_cache", None
+        )
+        if not cache:
+            return {}
+        policy = cache.get(self._policy_id)
+        if not policy:
+            return {}
+        attrs: dict[str, Any] = {"policy_id": self._policy_id}
+        if policy.action:
+            attrs["action"] = policy.action
+        if policy.source_zone:
+            attrs["source_zone"] = policy.source_zone
+        if policy.dest_zone:
+            attrs["dest_zone"] = policy.dest_zone
+        if policy.protocol:
+            attrs["protocol"] = policy.protocol
+        # Show raw field names so we can improve naming
+        attrs["raw_keys"] = sorted(policy.raw.keys()) if policy.raw else []
+        return attrs
 
     def _update_cache(self, enabled: bool) -> None:
         """Optimistically update the hub firewall-policy cache."""
@@ -766,14 +793,28 @@ async def async_setup_entry(
 
             hub._fw_policy_cache = policy_cache  # noqa: SLF001
 
+            # Count duplicate names so we can number them
+            name_counts: dict[str, int] = {}
+            name_seen: dict[str, int] = {}
             for policy in policy_cache.values():
-                entities.append(
-                    UniFiFirewallPolicySwitch(
-                        coordinator=hub.device_coordinator,
-                        hub=hub,
-                        policy=policy,
-                    )
+                name_counts[policy.name] = name_counts.get(policy.name, 0) + 1
+
+            for policy in policy_cache.values():
+                # Build a unique display name
+                if name_counts.get(policy.name, 1) > 1:
+                    seq = name_seen.get(policy.name, 0) + 1
+                    name_seen[policy.name] = seq
+                    display = f"Firewall {policy.name} {seq}"
+                else:
+                    display = f"Firewall {policy.name}"
+
+                entity = UniFiFirewallPolicySwitch(
+                    coordinator=hub.device_coordinator,
+                    hub=hub,
+                    policy=policy,
                 )
+                entity._attr_name = display
+                entities.append(entity)
             _LOGGER.debug("Discovered %d firewall policy switch(es)", len(policy_cache))
         except Exception:
             _LOGGER.warning("Could not fetch firewall policies for switch setup", exc_info=True)
