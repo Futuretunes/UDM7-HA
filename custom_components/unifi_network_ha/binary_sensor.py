@@ -194,7 +194,6 @@ def _make_wan_binary_sensors(wan_name: str) -> list[UniFiBinarySensorDescription
         # Link up
         UniFiBinarySensorDescription(
             key=f"{safe_key}_link_up",
-            translation_key="wan_link_up",
             name=f"{label} link up",
             device_class=BinarySensorDeviceClass.CONNECTIVITY,
             value_fn=lambda hub, _wn=wan_name: _wan_link_up(hub, _wn),
@@ -203,7 +202,6 @@ def _make_wan_binary_sensors(wan_name: str) -> list[UniFiBinarySensorDescription
         # Internet reachable on this WAN
         UniFiBinarySensorDescription(
             key=f"{safe_key}_internet",
-            translation_key="wan_internet",
             name=f"{label} internet",
             device_class=BinarySensorDeviceClass.CONNECTIVITY,
             value_fn=lambda hub, _wn=wan_name: _wan_internet(hub, _wn),

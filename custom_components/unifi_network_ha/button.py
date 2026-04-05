@@ -113,7 +113,6 @@ def _make_wan_speedtest_button(wan_name: str) -> UniFiButtonDescription:
 
     return UniFiButtonDescription(
         key=f"run_speedtest_{safe_key}",
-        translation_key="run_speedtest_wan",
         name=f"Run speedtest {label}",
         icon="mdi:speedometer",
         entity_category=EntityCategory.DIAGNOSTIC,

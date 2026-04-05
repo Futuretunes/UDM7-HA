@@ -738,7 +738,6 @@ def _make_temperature_sensor(temp_name: str) -> UniFiSensorDescription:
     safe_key = temp_name.lower().replace(" ", "_").replace("-", "_")
     return UniFiSensorDescription(
         key=f"temperature_{safe_key}",
-        translation_key="temperature",
         name=f"Temperature {temp_name}",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -764,7 +763,6 @@ def _make_storage_sensor(storage_name: str) -> UniFiSensorDescription:
     safe_key = storage_name.lower().replace(" ", "_").replace("/", "_").replace("-", "_")
     return UniFiSensorDescription(
         key=f"storage_{safe_key}_usage",
-        translation_key="storage_usage",
         name=f"Storage {storage_name} usage",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -796,7 +794,6 @@ def _make_wan_sensors(wan_name: str) -> list[UniFiSensorDescription]:
         # IP address
         UniFiSensorDescription(
             key=f"{safe_key}_ip",
-            translation_key="wan_ip",
             name=f"{label} IP address",
             entity_category=EntityCategory.DIAGNOSTIC,
             icon="mdi:ip-network",
@@ -805,7 +802,6 @@ def _make_wan_sensors(wan_name: str) -> list[UniFiSensorDescription]:
         # IPv6 address
         UniFiSensorDescription(
             key=f"{safe_key}_ip6",
-            translation_key="wan_ip6",
             name=f"{label} IPv6 address",
             entity_category=EntityCategory.DIAGNOSTIC,
             icon="mdi:ip-network",
@@ -814,7 +810,6 @@ def _make_wan_sensors(wan_name: str) -> list[UniFiSensorDescription]:
         # Download rate (fast-poll from wan_rate coordinator)
         UniFiSensorDescription(
             key=f"{safe_key}_download_rate",
-            translation_key="wan_download_rate",
             name=f"{label} download rate",
             device_class=SensorDeviceClass.DATA_RATE,
             native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
@@ -827,7 +822,6 @@ def _make_wan_sensors(wan_name: str) -> list[UniFiSensorDescription]:
         # Upload rate (fast-poll from wan_rate coordinator)
         UniFiSensorDescription(
             key=f"{safe_key}_upload_rate",
-            translation_key="wan_upload_rate",
             name=f"{label} upload rate",
             device_class=SensorDeviceClass.DATA_RATE,
             native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
@@ -840,7 +834,6 @@ def _make_wan_sensors(wan_name: str) -> list[UniFiSensorDescription]:
         # Link speed
         UniFiSensorDescription(
             key=f"{safe_key}_link_speed",
-            translation_key="wan_link_speed",
             name=f"{label} link speed",
             device_class=SensorDeviceClass.DATA_RATE,
             native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND,
@@ -851,7 +844,6 @@ def _make_wan_sensors(wan_name: str) -> list[UniFiSensorDescription]:
         # Type (e.g. "ethernet", "sfp+")
         UniFiSensorDescription(
             key=f"{safe_key}_type",
-            translation_key="wan_type",
             name=f"{label} type",
             entity_category=EntityCategory.DIAGNOSTIC,
             icon="mdi:ethernet",
@@ -860,7 +852,6 @@ def _make_wan_sensors(wan_name: str) -> list[UniFiSensorDescription]:
         # Latency
         UniFiSensorDescription(
             key=f"{safe_key}_latency",
-            translation_key="wan_latency",
             name=f"{label} latency",
             native_unit_of_measurement="ms",
             state_class=SensorStateClass.MEASUREMENT,
@@ -871,7 +862,6 @@ def _make_wan_sensors(wan_name: str) -> list[UniFiSensorDescription]:
         # Gateway IP
         UniFiSensorDescription(
             key=f"{safe_key}_gateway",
-            translation_key="wan_gateway",
             name=f"{label} gateway",
             entity_category=EntityCategory.DIAGNOSTIC,
             icon="mdi:router-network",
