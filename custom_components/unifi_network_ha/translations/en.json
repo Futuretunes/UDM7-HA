@@ -1,0 +1,206 @@
+{
+  "config": {
+    "step": {
+      "connection": {
+        "title": "Connection Type",
+        "description": "Choose how to connect to your UniFi Network controller.",
+        "data": {
+          "connection_type": "Connection type"
+        },
+        "data_description": {
+          "connection_type": "Select **Local only** for direct controller access, or **Local + Cloud** to also enable UI site management via the UniFi Cloud API."
+        }
+      },
+      "local": {
+        "title": "Local Controller",
+        "description": "Enter the connection details for your UniFi Network controller.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "site": "Site ID",
+          "auth_method": "Authentication method",
+          "api_key": "API key",
+          "username": "Username",
+          "password": "Password",
+          "verify_ssl": "Verify SSL certificate"
+        },
+        "data_description": {
+          "host": "IP address or hostname of your UniFi controller (e.g. 192.168.1.1).",
+          "port": "HTTPS port of the controller (default: 443).",
+          "site": "Site ID from the controller URL. Use `default` for the primary site.",
+          "auth_method": "Choose **API key** (recommended for UniFi OS 9+) or **Username / Password** for older firmware.",
+          "api_key": "API key generated in the UniFi OS settings under **API Access**.",
+          "username": "Local admin username for the controller.",
+          "password": "Local admin password for the controller.",
+          "verify_ssl": "Enable if the controller uses a trusted SSL certificate. Disable for self-signed certificates."
+        }
+      },
+      "cloud": {
+        "title": "UniFi Cloud API",
+        "description": "Optionally provide a UniFi Cloud API key for remote site management features.",
+        "data": {
+          "cloud_api_key": "Cloud API key"
+        },
+        "data_description": {
+          "cloud_api_key": "API key from [developers.ui.com](https://developers.ui.com). Grants read-only access to cloud-connected site metadata."
+        }
+      },
+      "site": {
+        "title": "Select Site",
+        "description": "Multiple sites were discovered on this controller. Choose the site to manage.",
+        "data": {
+          "site": "Site"
+        },
+        "data_description": {
+          "site": "Select the UniFi site you want this integration to monitor."
+        }
+      },
+      "features": {
+        "title": "Features",
+        "description": "Select which features to enable. These can be changed later in the integration options.",
+        "data": {
+          "track_clients": "Track network clients",
+          "enable_wan_monitoring": "WAN uplink monitoring",
+          "enable_dpi": "Deep Packet Inspection statistics",
+          "enable_alarms": "Alarm / alert monitoring",
+          "enable_vpn": "VPN status monitoring"
+        },
+        "data_description": {
+          "track_clients": "Create device tracker entities for wired and wireless clients.",
+          "enable_wan_monitoring": "Monitor WAN uplinks including speed-test results and transfer rates.",
+          "enable_dpi": "Expose per-application traffic statistics from DPI.",
+          "enable_alarms": "Surface controller alarms and alerts as binary sensors.",
+          "enable_vpn": "Monitor site-to-site and remote-access VPN tunnels."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the UniFi controller. Verify the host, port, and network connectivity.",
+      "invalid_auth": "Authentication failed. Check your credentials or API key.",
+      "invalid_api_key": "The API key is invalid or has insufficient permissions.",
+      "no_gateway_found": "No gateway device was found on this site. Ensure the controller has adopted a gateway.",
+      "unknown": "An unexpected error occurred. Check the Home Assistant logs for details."
+    },
+    "abort": {
+      "already_configured": "This UniFi site is already configured.",
+      "reauth_successful": "Re-authentication was successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "description": "Configure the UniFi Network HA integration.",
+        "menu_options": {
+          "features": "Features",
+          "client_tracking": "Client tracking",
+          "intervals": "Update intervals"
+        }
+      },
+      "features": {
+        "title": "Features",
+        "description": "Enable or disable feature categories.",
+        "data": {
+          "track_clients": "Track network clients",
+          "enable_wan_monitoring": "WAN uplink monitoring",
+          "enable_dpi": "Deep Packet Inspection statistics",
+          "enable_alarms": "Alarm / alert monitoring",
+          "enable_vpn": "VPN status monitoring",
+          "enable_cloud": "Cloud API features"
+        },
+        "data_description": {
+          "track_clients": "Create device tracker entities for wired and wireless clients.",
+          "enable_wan_monitoring": "Monitor WAN uplinks including speed-test results and transfer rates.",
+          "enable_dpi": "Expose per-application traffic statistics from DPI.",
+          "enable_alarms": "Surface controller alarms and alerts as binary sensors.",
+          "enable_vpn": "Monitor site-to-site and remote-access VPN tunnels.",
+          "enable_cloud": "Enable cloud API features (requires a cloud API key)."
+        }
+      },
+      "client_tracking": {
+        "title": "Client Tracking",
+        "description": "Configure how network clients are tracked.",
+        "data": {
+          "track_wired": "Track wired clients",
+          "track_wireless": "Track wireless clients",
+          "ssid_filter": "SSID filter",
+          "client_heartbeat": "Client heartbeat timeout (seconds)"
+        },
+        "data_description": {
+          "track_wired": "Create device tracker entities for wired (Ethernet) clients.",
+          "track_wireless": "Create device tracker entities for wireless (Wi-Fi) clients.",
+          "ssid_filter": "Only track wireless clients connected to these SSIDs. Leave empty to track all.",
+          "client_heartbeat": "Seconds of inactivity before a client is marked as away (default: 300)."
+        }
+      },
+      "intervals": {
+        "title": "Update Intervals",
+        "description": "Adjust how often data is polled from the controller. Lower values increase responsiveness but add load.",
+        "data": {
+          "update_interval_devices": "Device poll interval (seconds)",
+          "update_interval_clients": "Client poll interval (seconds)",
+          "update_interval_health": "Health poll interval (seconds)",
+          "update_interval_wan_rate": "WAN rate poll interval (seconds)",
+          "update_interval_alarms": "Alarm poll interval (seconds)",
+          "update_interval_dpi": "DPI poll interval (seconds)",
+          "update_interval_cloud": "Cloud poll interval (seconds)"
+        },
+        "data_description": {
+          "update_interval_devices": "How often to poll device status (default: 30).",
+          "update_interval_clients": "How often to poll client data (default: 30).",
+          "update_interval_health": "How often to poll system health (default: 60).",
+          "update_interval_wan_rate": "How often to poll WAN transfer rates (default: 5).",
+          "update_interval_alarms": "How often to poll alarms (default: 120).",
+          "update_interval_dpi": "How often to poll DPI statistics (default: 300).",
+          "update_interval_cloud": "How often to poll cloud API data (default: 900)."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "internet_connected": { "name": "Internet connected" },
+      "wan_health": { "name": "WAN health problem" },
+      "speedtest_in_progress": { "name": "Speedtest in progress" },
+      "wan_link_up": { "name": "{wan_label} link up" },
+      "wan_internet": { "name": "{wan_label} internet" }
+    },
+    "button": {
+      "run_speedtest": { "name": "Run speedtest" },
+      "run_speedtest_wan": { "name": "Run speedtest {wan_label}" },
+      "restart_gateway": { "name": "Restart gateway" },
+      "force_provision": { "name": "Force provision" }
+    },
+    "event": {
+      "wan_failover": { "name": "WAN Failover" }
+    },
+    "sensor": {
+      "cpu_usage": { "name": "CPU usage" },
+      "memory_usage": { "name": "Memory usage" },
+      "uptime": { "name": "Uptime" },
+      "load_avg_1m": { "name": "Load average (1 min)" },
+      "load_avg_5m": { "name": "Load average (5 min)" },
+      "load_avg_15m": { "name": "Load average (15 min)" },
+      "connected_clients": { "name": "Connected clients" },
+      "firmware_version": { "name": "Firmware version" },
+      "device_state": { "name": "Device state" },
+      "active_wan": { "name": "Active WAN" },
+      "speedtest_download": { "name": "Speedtest download" },
+      "speedtest_upload": { "name": "Speedtest upload" },
+      "speedtest_ping": { "name": "Speedtest ping" },
+      "speedtest_last_run": { "name": "Speedtest last run" },
+      "speedtest_server": { "name": "Speedtest server" },
+      "isp_name": { "name": "ISP name" },
+      "wan_latency": { "name": "WAN latency" },
+      "temperature": { "name": "Temperature {temp_name}" },
+      "storage_usage": { "name": "Storage {storage_name} usage" },
+      "wan_ip": { "name": "{wan_label} IP address" },
+      "wan_ip6": { "name": "{wan_label} IPv6 address" },
+      "wan_download_rate": { "name": "{wan_label} download rate" },
+      "wan_upload_rate": { "name": "{wan_label} upload rate" },
+      "wan_link_speed": { "name": "{wan_label} link speed" },
+      "wan_type": { "name": "{wan_label} type" },
+      "wan_gateway": { "name": "{wan_label} gateway" }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+reconnect_client:
+  name: Reconnect Client
+  description: Force a client to reconnect to the network.
+  fields:
+    mac:
+      name: MAC Address
+      description: MAC address of the client to reconnect.
+      required: true
+      selector:
+        text:
+
+remove_clients:
+  name: Remove Offline Clients
+  description: Remove all offline clients from the UniFi controller.
+
+block_client:
+  name: Block Client
+  description: Block a client from the network.
+  fields:
+    mac:
+      name: MAC Address
+      description: MAC address of the client to block.
+      required: true
+      selector:
+        text:
+
+unblock_client:
+  name: Unblock Client
+  description: Unblock a client on the network.
+  fields:
+    mac:
+      name: MAC Address
+      description: MAC address of the client to unblock.
+      required: true
+      selector:
+        text:
