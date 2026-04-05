@@ -23,6 +23,16 @@ A comprehensive [Home Assistant](https://www.home-assistant.io/) custom integrat
 | LED control | x | | | | x |
 | Firmware updates | x | | x | | x |
 | WebSocket real-time | x | | | | x |
+| Feature toggles (granular on/off) | | | | | x |
+| Per-client sensors | | | | | x |
+| VRRP/Shadow Mode | | | | | x |
+| Guest voucher management | | | | | x |
+| Traffic reports | | | | | x |
+| PoE power budget | | | | | x |
+| WiFi experience score | | | | | x |
+| UniFi Protect (NVR/cameras) | | | | | x |
+| Device product images | | | | | x |
+| Automation blueprints | | | | | x |
 | Zero pip dependencies | | | | | x |
 
 ## Supported devices
@@ -205,6 +215,57 @@ Add the integration via **Settings > Devices & Services > Add Integration > Adva
 
 </details>
 
+<details>
+<summary>Traffic reports</summary>
+
+| Entity | Unit | Update |
+|--------|------|--------|
+| Today Download | bytes | 300s |
+| Today Upload | bytes | 300s |
+
+</details>
+
+<details>
+<summary>PoE power budget (per switch)</summary>
+
+| Entity | Unit | Update |
+|--------|------|--------|
+| Total PoE Watts | W | 30s |
+
+</details>
+
+<details>
+<summary>WiFi experience score</summary>
+
+| Entity | Unit | Update |
+|--------|------|--------|
+| WiFi Experience Score | 0-100 | 60s |
+
+</details>
+
+<details>
+<summary>Network / VLAN sensors</summary>
+
+| Entity | Unit | Update |
+|--------|------|--------|
+| Network Client Count | count | 30s |
+| Network VLAN ID | — | 30s |
+
+</details>
+
+<details>
+<summary>UniFi Protect</summary>
+
+**NVR sensors (requires Protect feature toggle)**
+
+| Entity | Unit | Update |
+|--------|------|--------|
+| NVR Storage Used | % | 60s |
+| NVR Camera Count | count | 60s |
+| NVR Retention Days | days | 60s |
+
+</details>
+
 ### Binary sensors
 
 | Entity | Device class |
@@ -215,6 +276,9 @@ Add the integration via **Settings > Devices & Services > Add Integration > Adva
 | WAN{N} Link Up | connectivity |
 | WAN{N} Internet | connectivity |
 | VPN Active | connectivity |
+| SFP Detected (per port) | plug |
+| Shadow Mode Active | running |
+| Camera Connected (per camera, if Protect enabled) | connectivity |
 
 ### Device tracker
 
@@ -290,6 +354,11 @@ automation:
 | `unifi_network_ha.remove_clients` | Remove all offline clients |
 | `unifi_network_ha.block_client` | Block a client by MAC |
 | `unifi_network_ha.unblock_client` | Unblock a client by MAC |
+| `unifi_network_ha.create_voucher` | Create guest portal vouchers |
+| `unifi_network_ha.list_vouchers` | List active vouchers (fires event) |
+| `unifi_network_ha.revoke_voucher` | Revoke a voucher by ID |
+| `unifi_network_ha.kick_client` | Disconnect a client |
+| `unifi_network_ha.forget_client` | Remove from known clients |
 
 ## Architecture
 
@@ -310,6 +379,8 @@ UniFi Device --> API Client --> Coordinators --> Entities
 | Alarms | 120s | Yes |
 | DPI | 300s | Yes |
 | Cloud | 900s | Yes |
+| Traffic | 300s | Yes |
+| Protect | 60s | Yes |
 
 All intervals are adjustable in the integration's options flow.
 
@@ -338,6 +409,39 @@ After setup, configure via **Settings > Devices & Services > Advanced UniFi Netw
 - **Features** — Enable/disable device tracking, WAN monitoring, DPI, alarms, VPN
 - **Update intervals** — Adjust polling frequency for each coordinator (5s to 3600s)
 - **Client tracking** — Filter by wired/wireless, SSID allowlist, heartbeat timeout
+
+## Feature Toggles
+
+The integration organises features into toggle groups so you can enable only what you need. Configure these during setup or later via the options flow.
+
+| Group | Default | Includes |
+|-------|---------|----------|
+| **Core** | Always on | Gateway sensors, device info, firmware updates |
+| **Network Monitoring** | On | WAN status, health, speed tests, DPI, alarms, VPN |
+| **Security & Analysis** | Off | IDS/IPS alerts, firewall policies, traffic rules |
+| **Protect / NVR** | Off | NVR storage, camera sensors, per-camera binary sensors |
+| **Advanced** | Off | Per-client sensors (creates entities for every connected client) |
+
+Toggle groups are accessible at **Settings > Devices & Services > Advanced UniFi Network HA > Configure > Features**.
+
+## Automation Blueprints
+
+Six ready-made automation blueprints are included under `blueprints/automation/`:
+
+| Blueprint | Description |
+|-----------|-------------|
+| WAN failover notification | Send a notification when the active WAN changes |
+| New device alert | Alert when a previously unseen device joins the network |
+| Bandwidth threshold | Notify when a WAN interface exceeds a configurable throughput |
+| IPS threat alert | Push notification on IDS/IPS intrusion events |
+| Scheduled speedtest | Run a speed test on a cron schedule |
+| Scheduled device restart | Restart a device on a recurring schedule |
+
+Import them in Home Assistant via **Settings > Automations & Scenes > Blueprints > Import Blueprint**.
+
+## Dashboard
+
+An example Lovelace dashboard is provided at [`examples/dashboard.yaml`](examples/dashboard.yaml). It includes cards for WAN status, speed test results, device tracker, DPI breakdown, and Protect cameras. Import it via **Settings > Dashboards > Add Dashboard > From YAML** or copy sections into your existing dashboard.
 
 ## Troubleshooting
 
