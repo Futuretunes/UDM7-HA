@@ -3,10 +3,10 @@
   "name": "UniFi Network HA",
   "codeowners": ["@mikula"],
   "config_flow": true,
-  "documentation": "https://github.com/mikula/UDM7-HA",
+  "documentation": "https://github.com/Futuretunes/UDM7-HA",
   "integration_type": "hub",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/mikula/UDM7-HA/issues",
+  "issue_tracker": "https://github.com/Futuretunes/UDM7-HA/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
