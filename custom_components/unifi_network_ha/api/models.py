@@ -982,7 +982,6 @@ class FirewallPolicy:
     source_network: str = ""
     dest_network: str = ""
     protocol: str = ""
-    index: int = 0
 
     raw: dict = field(default_factory=dict)
 
@@ -999,7 +998,6 @@ class FirewallPolicy:
         if not dst_zone:
             dst_zone = str(data.get("destination_firewall_group_ids", [""])[0]) if data.get("destination_firewall_group_ids") else ""
         protocol = str(data.get("protocol", data.get("protocol_match_type", "")))
-        index = _safe_int(data.get("index", data.get("rule_index", 0)))
         return cls(
             id=str(data.get("_id", data.get("id", ""))),
             name=str(data.get("name", data.get("description", ""))),
@@ -1010,7 +1008,6 @@ class FirewallPolicy:
             source_network=src_net,
             dest_network=dst_net,
             protocol=protocol,
-            index=index,
             raw=data,
         )
 
@@ -1028,8 +1025,11 @@ class FirewallPolicy:
             zones.append(self.dest_zone)
         if zones:
             parts.append(f"({' → '.join(zones)})")
-        elif self.index:
-            parts.append(f"(#{self.index})")
+        elif self.action:
+            parts.append(f"({self.action})")
+        # Use the short ID suffix to disambiguate identical names
+        if not zones and self.id:
+            parts.append(f"[{self.id[-6:]}]")
         return " ".join(parts) if parts else f"Policy {self.id[:8]}"
 
 
