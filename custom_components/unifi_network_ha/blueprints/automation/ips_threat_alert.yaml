@@ -1,0 +1,56 @@
+blueprint:
+  name: "UniFi IPS Threat Alert"
+  description: "Get notified when your UniFi gateway detects an intrusion attempt or security threat via IDS/IPS."
+  domain: automation
+  author: "Advanced UniFi Network HA"
+  input:
+    ips_event_entity:
+      name: IPS Alert Event Entity
+      description: "The IPS Alert event entity from your gateway."
+      selector:
+        entity:
+          filter:
+            - integration: unifi_network_ha
+              domain: event
+    notify_service:
+      name: Notification Service
+      selector:
+        text:
+    min_severity:
+      name: Minimum Severity
+      description: "Only alert on threats with this severity or higher (1=highest, 3=lowest)."
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 3
+          step: 1
+
+trigger:
+  - platform: state
+    entity_id: !input ips_event_entity
+
+condition:
+  - condition: template
+    value_template: >-
+      {{ trigger.to_state.attributes.event_type is defined and
+         (trigger.to_state.attributes.severity | default(3) | int) <= (min_severity | int) }}
+    variables:
+      min_severity: !input min_severity
+
+action:
+  - service: !input notify_service
+    data:
+      title: "Security Threat Detected"
+      message: >-
+        {{ trigger.to_state.attributes.message | default('Unknown threat') }}
+
+        Source: {{ trigger.to_state.attributes.source_ip | default('?') }}:{{ trigger.to_state.attributes.source_port | default('?') }}
+        Target: {{ trigger.to_state.attributes.dest_ip | default('?') }}:{{ trigger.to_state.attributes.dest_port | default('?') }}
+        Protocol: {{ trigger.to_state.attributes.protocol | default('?') }}
+        Action: {{ trigger.to_state.attributes.action | default('?') }}
+        Signature: {{ trigger.to_state.attributes.signature | default('?') }}
+      data:
+        priority: high
+        ttl: 0
+        channel: security

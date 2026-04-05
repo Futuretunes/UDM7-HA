@@ -3,6 +3,7 @@
 Provides event entities that fire on:
 - WAN failover / recovery (active WAN interface changes)
 - IPS/IDS alerts (new alarm events from the alarm coordinator)
+- VPN connect/disconnect (real-time via WebSocket)
 """
 from __future__ import annotations
 
@@ -15,10 +16,13 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_ENABLE_ALARMS, DOMAIN, MANUFACTURER
+from .api.websocket import WebSocketMessageType
+from .const import CONF_ENABLE_ALARMS, CONF_ENABLE_VPN, DOMAIN, MANUFACTURER
 from .coordinators.alarm import AlarmCoordinator
 from .entity import UniFiEntity
 from .hub import UniFiHub
+
+from collections.abc import Callable
 
 # Type alias used in __init__.py — import so the platform signature matches.
 from . import UniFiConfigEntry
@@ -168,6 +172,82 @@ class IpsAlertEvent(CoordinatorEntity[AlarmCoordinator], EventEntity):
 
 
 # ---------------------------------------------------------------------------
+# VPN connect/disconnect event entity
+# ---------------------------------------------------------------------------
+
+class VpnEvent(EventEntity):
+    """Event entity that fires on VPN connect/disconnect via WebSocket."""
+
+    _attr_event_types = ["vpn_connect", "vpn_disconnect"]
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:vpn"
+
+    def __init__(
+        self,
+        hub: UniFiHub,
+        mac: str,
+        device_name: str,
+        device_model: str,
+    ) -> None:
+        super().__init__()
+        self._hub = hub
+        self._device_mac = mac
+        self._device_name = device_name
+        self._device_model = device_model
+        self._attr_unique_id = f"{mac}_vpn_events"
+        self._attr_name = "VPN event"
+        self._unsub: Callable[[], None] | None = None
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to VPN WebSocket messages when added to HA."""
+        if self._hub.websocket:
+            self._unsub = self._hub.websocket.subscribe(
+                self._on_vpn_message,
+                [WebSocketMessageType.VPN_CONNECT, WebSocketMessageType.VPN_DISCONNECT],
+            )
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Unsubscribe from WebSocket when removed from HA."""
+        if self._unsub:
+            self._unsub()
+            self._unsub = None
+
+    def _on_vpn_message(self, msg_type: str, data: list[dict]) -> None:
+        """Handle a VPN WebSocket message by firing an HA event."""
+        event_type = (
+            "vpn_connect"
+            if msg_type == WebSocketMessageType.VPN_CONNECT
+            else "vpn_disconnect"
+        )
+        for item in data:
+            self._trigger_event(
+                event_type,
+                {
+                    "user": item.get("user", ""),
+                    "remote_ip": item.get("remote_ip", item.get("ip", "")),
+                    "tunnel_type": item.get("tunnel_type", ""),
+                    "timestamp": datetime.now(tz=UTC).isoformat(),
+                },
+            )
+            _LOGGER.info(
+                "VPN %s event fired: user=%s, ip=%s",
+                event_type,
+                item.get("user", "unknown"),
+                item.get("remote_ip", item.get("ip", "unknown")),
+            )
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device registry information for this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_mac)},
+            name=self._device_name,
+            manufacturer=MANUFACTURER,
+            model=self._device_model,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Platform setup
 # ---------------------------------------------------------------------------
 
@@ -210,6 +290,17 @@ async def async_setup_entry(
         entities.append(
             IpsAlertEvent(
                 coordinator=hub.alarm_coordinator,
+                hub=hub,
+                mac=hub.gateway_mac,
+                device_name=gw_name,
+                device_model=gw_model,
+            )
+        )
+
+    # VPN connect/disconnect event (conditional on VPN being enabled + WebSocket)
+    if hub.get_option(CONF_ENABLE_VPN, True) and hub.websocket is not None:
+        entities.append(
+            VpnEvent(
                 hub=hub,
                 mac=hub.gateway_mac,
                 device_name=gw_name,

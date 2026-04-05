@@ -1,9 +1,12 @@
 """UniFi Network HA image platform.
 
-Provides a WiFi QR code image entity for each WLAN.  The entity exposes
-the standard ``WIFI:`` connection string as extra state attributes so that
-HA dashboards can render a QR code using a card that supports the
-``wifi_qr`` format.
+Provides:
+* A WiFi QR code image entity for each WLAN.
+* A product image entity for each adopted UniFi network device.
+
+The QR code entity exposes the standard ``WIFI:`` connection string as
+extra state attributes so that HA dashboards can render a QR code using a
+card that supports the ``wifi_qr`` format.
 
 Since generating actual QR code images requires an external library that
 is not bundled with Home Assistant, this platform generates a minimal SVG
@@ -15,14 +18,19 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import aiohttp
+
 from homeassistant.components.image import ImageEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .api.models import Wlan
-from .const import DOMAIN, MANUFACTURER
+from .api.models import Device, Wlan
+from .const import CONF_ENABLE_DEVICE_CONTROLS, DOMAIN, MANUFACTURER
+from .device_images import get_device_image_url
 from .hub import UniFiHub
 
 # Type alias used in __init__.py — import so the platform signature matches.
@@ -131,6 +139,74 @@ class UniFiWlanQrCode(ImageEntity):
 
 
 # ---------------------------------------------------------------------------
+# Device product image entity
+# ---------------------------------------------------------------------------
+
+
+class UniFiDeviceImage(ImageEntity):
+    """Product image for a UniFi network device.
+
+    Fetches the product photo from Ubiquiti's CDN (or static.ui.com
+    fallback) and caches it so subsequent requests are served locally.
+    """
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_content_type = "image/png"
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        hub: UniFiHub,
+        device: Device,
+    ) -> None:
+        super().__init__(hass)
+        self._hub = hub
+        self._device = device
+        self._device_mac = device.mac
+        self._attr_unique_id = f"{device.mac}_product_image"
+        self._attr_name = "Product image"
+        self._image_url = get_device_image_url(device.model)
+        self._cached_image: bytes | None = None
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Link this image entity to the network device."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_mac)},
+            name=self._device.name or self._device_mac,
+            manufacturer=MANUFACTURER,
+            model=self._device.model_name or self._device.model,
+        )
+
+    async def async_image(self) -> bytes | None:
+        """Return the product image bytes, fetching from CDN if needed."""
+        if self._cached_image is not None:
+            return self._cached_image
+        if not self._image_url:
+            return None
+        try:
+            session = async_get_clientsession(self._hub.hass)
+            timeout = aiohttp.ClientTimeout(total=15)
+            async with session.get(self._image_url, timeout=timeout) as resp:
+                if resp.status == 200:
+                    self._cached_image = await resp.read()
+                    return self._cached_image
+                _LOGGER.debug(
+                    "Device image fetch returned %s for %s (%s)",
+                    resp.status,
+                    self._device.model,
+                    self._image_url,
+                )
+        except Exception:  # noqa: BLE001
+            _LOGGER.debug(
+                "Could not fetch device image for %s", self._device.model,
+                exc_info=True,
+            )
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Minimal QR code SVG generator (pure Python, no external deps)
 # ---------------------------------------------------------------------------
 
@@ -197,14 +273,24 @@ async def async_setup_entry(
     entry: UniFiConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up UniFi Network HA WLAN QR code image entities."""
+    """Set up UniFi Network HA image entities.
+
+    Creates:
+    * A WiFi QR code image for each WLAN.
+    * A product photo image for each adopted device with a known model.
+    """
     hub: UniFiHub = entry.runtime_data
-    entities: list[UniFiWlanQrCode] = []
+    entities: list[ImageEntity] = []
 
     if hub.legacy is None:
         _LOGGER.debug("Legacy API not available — skipping image setup")
         return
 
+    if not hub.get_option(CONF_ENABLE_DEVICE_CONTROLS, True):
+        _LOGGER.debug("Device controls disabled — skipping image setup")
+        return
+
+    # --- WLAN QR codes ---------------------------------------------------
     try:
         raw_wlans = await hub.legacy.get_wlans()
         for raw in raw_wlans:
@@ -220,7 +306,17 @@ async def async_setup_entry(
             )
     except Exception:
         _LOGGER.warning("Could not fetch WLANs for QR code setup", exc_info=True)
-        return
 
-    _LOGGER.debug("Setting up %d WLAN QR code image entities", len(entities))
+    # --- Device product images -------------------------------------------
+    if hub.device_coordinator:
+        for mac, device in hub.device_coordinator.devices.items():
+            if not device.adopted:
+                continue
+            image_url = get_device_image_url(device.model)
+            if image_url:
+                entities.append(
+                    UniFiDeviceImage(hass=hass, hub=hub, device=device)
+                )
+
+    _LOGGER.debug("Setting up %d image entities", len(entities))
     async_add_entities(entities)

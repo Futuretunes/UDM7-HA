@@ -24,6 +24,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api.models import Client, FirewallPolicy, PortForward, TrafficRule, Wlan
 from .const import (
+    CONF_ENABLE_CLIENT_CONTROLS,
+    CONF_ENABLE_DEVICE_CONTROLS,
     CONF_ENABLE_DPI,
     CONF_TRACK_CLIENTS,
     DEFAULT_TRACK_CLIENTS,
@@ -650,7 +652,7 @@ async def async_setup_entry(
     entities: list[SwitchEntity] = []
 
     # ── WLAN switches ──────────────────────────────────────────────────
-    if hub.device_coordinator is not None:
+    if hub.get_option(CONF_ENABLE_DEVICE_CONTROLS, True) and hub.device_coordinator is not None:
         try:
             raw_wlans = await hub.legacy.get_wlans()
             wlans: dict[str, Wlan] = {}
@@ -705,7 +707,7 @@ async def async_setup_entry(
             _LOGGER.warning("Could not fetch DPI groups for switch setup", exc_info=True)
 
     # ── Port forward switches ─────────────────────────────────────────
-    if hub.device_coordinator is not None:
+    if hub.get_option(CONF_ENABLE_DEVICE_CONTROLS, True) and hub.device_coordinator is not None:
         try:
             raw_pfs = await hub.legacy.get_port_forwards()
             pf_cache: dict[str, PortForward] = {}
@@ -729,7 +731,7 @@ async def async_setup_entry(
             _LOGGER.warning("Could not fetch port forwards for switch setup", exc_info=True)
 
     # ── Traffic rule switches ─────────────────────────────────────────
-    if hub.v2 is not None and hub.device_coordinator is not None:
+    if hub.get_option(CONF_ENABLE_DEVICE_CONTROLS, True) and hub.v2 is not None and hub.device_coordinator is not None:
         try:
             raw_rules = await hub.v2.get_traffic_rules()
             rule_cache: dict[str, TrafficRule] = {}
@@ -753,7 +755,7 @@ async def async_setup_entry(
             _LOGGER.warning("Could not fetch traffic rules for switch setup", exc_info=True)
 
     # ── Firewall policy switches ──────────────────────────────────────
-    if hub.v2 is not None and hub.device_coordinator is not None:
+    if hub.get_option(CONF_ENABLE_DEVICE_CONTROLS, True) and hub.v2 is not None and hub.device_coordinator is not None:
         try:
             raw_policies = await hub.v2.get_firewall_policies()
             policy_cache: dict[str, FirewallPolicy] = {}
@@ -777,7 +779,7 @@ async def async_setup_entry(
             _LOGGER.warning("Could not fetch firewall policies for switch setup", exc_info=True)
 
     # ── Per-switch-port switches (PoE + port enable) ───────────────────
-    if hub.device_coordinator is not None:
+    if hub.get_option(CONF_ENABLE_DEVICE_CONTROLS, True) and hub.device_coordinator is not None:
         for mac, device in hub.device_coordinator.devices.items():
             if device.type != "usw":
                 continue
@@ -828,7 +830,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
     # ── Client block switches (dynamic — added as clients appear) ──────
-    if hub.get_option(CONF_TRACK_CLIENTS, DEFAULT_TRACK_CLIENTS) and hub.client_coordinator:
+    if hub.get_option(CONF_ENABLE_CLIENT_CONTROLS, True) and hub.get_option(CONF_TRACK_CLIENTS, DEFAULT_TRACK_CLIENTS) and hub.client_coordinator:
         tracked_macs: set[str] = set()
 
         @callback

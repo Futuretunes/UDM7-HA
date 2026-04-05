@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "connection": {
-        "title": "Connection Type",
+        "title": "Advanced UniFi Network HA",
         "description": "Choose how to connect to your UniFi Network controller.",
         "data": {
           "connection_type": "Connection type"
@@ -59,18 +59,26 @@
         "title": "Features",
         "description": "Select which features to enable. These can be changed later in the integration options.",
         "data": {
-          "track_clients": "Track network clients",
           "enable_wan_monitoring": "WAN uplink monitoring",
-          "enable_dpi": "Deep Packet Inspection statistics",
+          "track_clients": "Track network clients",
+          "enable_device_sensors": "Per-device sensors (AP radios, switch ports)",
           "enable_alarms": "Alarm / alert monitoring",
-          "enable_vpn": "VPN status monitoring"
+          "enable_dpi": "Deep Packet Inspection statistics",
+          "enable_vpn": "VPN status monitoring",
+          "enable_per_client_sensors": "Per-client sensor entities",
+          "enable_client_controls": "Client block/unblock controls",
+          "enable_device_controls": "Device controls (PoE, port, WLAN, firewall)"
         },
         "data_description": {
-          "track_clients": "Create device tracker entities for wired and wireless clients.",
-          "enable_wan_monitoring": "Monitor WAN uplinks including speed-test results and transfer rates.",
-          "enable_dpi": "Expose per-application traffic statistics from DPI.",
-          "enable_alarms": "Surface controller alarms and alerts as binary sensors.",
-          "enable_vpn": "Monitor site-to-site and remote-access VPN tunnels."
+          "enable_wan_monitoring": "WAN status, throughput, failover events, speedtest.",
+          "track_clients": "Track network clients as device trackers.",
+          "enable_device_sensors": "Creates sensors for each AP radio (channel, utilization, satisfaction) and each switch port (throughput, PoE power).",
+          "enable_alarms": "IDS/IPS alerts and alarm monitoring.",
+          "enable_dpi": "Deep packet inspection traffic analysis. Polls every 5 min.",
+          "enable_vpn": "VPN tunnel monitoring.",
+          "enable_per_client_sensors": "Creates individual sensor entities for each network client's signal strength, bandwidth, and satisfaction. On networks with many clients this can create hundreds of entities.",
+          "enable_client_controls": "Enables block/unblock switches and kick/forget services for network clients.",
+          "enable_device_controls": "Enables PoE port toggles, port enable/disable, WLAN switches, firewall policy switches, traffic rule switches, and port forwarding switches."
         }
       }
     },
@@ -90,7 +98,7 @@
     "step": {
       "init": {
         "title": "Options",
-        "description": "Configure the UniFi Network HA integration.",
+        "description": "Configure the Advanced UniFi Network HA integration.",
         "menu_options": {
           "features": "Features",
           "client_tracking": "Client tracking",
@@ -99,22 +107,30 @@
       },
       "features": {
         "title": "Features",
-        "description": "Enable or disable feature categories.",
+        "description": "Enable or disable feature categories. Changes take effect after reloading the integration.",
         "data": {
-          "track_clients": "Track network clients",
           "enable_wan_monitoring": "WAN uplink monitoring",
-          "enable_dpi": "Deep Packet Inspection statistics",
+          "track_clients": "Track network clients",
+          "enable_device_sensors": "Per-device sensors (AP radios, switch ports)",
           "enable_alarms": "Alarm / alert monitoring",
+          "enable_dpi": "Deep Packet Inspection statistics",
           "enable_vpn": "VPN status monitoring",
-          "enable_cloud": "Cloud API features"
+          "enable_per_client_sensors": "Per-client sensor entities",
+          "enable_client_controls": "Client block/unblock controls",
+          "enable_device_controls": "Device controls (PoE, port, WLAN, firewall)",
+          "enable_cloud": "Cloud ISP metrics"
         },
         "data_description": {
-          "track_clients": "Create device tracker entities for wired and wireless clients.",
-          "enable_wan_monitoring": "Monitor WAN uplinks including speed-test results and transfer rates.",
-          "enable_dpi": "Expose per-application traffic statistics from DPI.",
-          "enable_alarms": "Surface controller alarms and alerts as binary sensors.",
-          "enable_vpn": "Monitor site-to-site and remote-access VPN tunnels.",
-          "enable_cloud": "Enable cloud API features (requires a cloud API key)."
+          "enable_wan_monitoring": "WAN status, throughput, failover events, speedtest.",
+          "track_clients": "Track network clients as device trackers.",
+          "enable_device_sensors": "Creates sensors for each AP radio (channel, utilization, satisfaction) and each switch port (throughput, PoE power).",
+          "enable_alarms": "IDS/IPS alerts and alarm monitoring.",
+          "enable_dpi": "Deep packet inspection traffic analysis. Polls every 5 min.",
+          "enable_vpn": "VPN tunnel monitoring.",
+          "enable_per_client_sensors": "Creates individual sensor entities for each network client's signal strength, bandwidth, and satisfaction. On networks with many clients this can create hundreds of entities.",
+          "enable_client_controls": "Enables block/unblock switches and kick/forget services for network clients.",
+          "enable_device_controls": "Enables PoE port toggles, port enable/disable, WLAN switches, firewall policy switches, traffic rule switches, and port forwarding switches.",
+          "enable_cloud": "Cloud ISP metrics from unifi.ui.com. Polls every 15 min."
         }
       },
       "client_tracking": {

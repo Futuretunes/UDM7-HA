@@ -16,7 +16,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_ENABLE_ALARMS
+from .const import CONF_ENABLE_ALARMS, CONF_ENABLE_DEVICE_CONTROLS
 from .coordinators.base import UniFiDataUpdateCoordinator
 from .entity import UniFiEntity
 from .hub import UniFiHub
@@ -258,54 +258,56 @@ async def async_setup_entry(
         )
 
     # -- Per-device restart and locate buttons (all adopted devices) ---------
-    for mac, device in hub.device_coordinator.devices.items():
-        if not device.adopted:
-            continue
-        # Skip the gateway — it already has a restart button above.
-        if mac == hub.gateway_mac:
-            continue
+    if hub.get_option(CONF_ENABLE_DEVICE_CONTROLS, True):
+        for mac, device in hub.device_coordinator.devices.items():
+            if not device.adopted:
+                continue
+            # Skip the gateway — it already has a restart button above.
+            if mac == hub.gateway_mac:
+                continue
 
-        dev_name = device.name or f"Device {mac}"
-        dev_model = device.model_name or device.model or "UniFi Device"
+            dev_name = device.name or f"Device {mac}"
+            dev_model = device.model_name or device.model or "UniFi Device"
 
-        for desc in _make_device_buttons(mac, dev_name):
-            entities.append(
-                UniFiButtonEntity(
-                    coordinator=coordinator,
-                    description=desc,
-                    hub=hub,
-                    mac=mac,
-                    device_name=dev_name,
-                    device_model=dev_model,
+            for desc in _make_device_buttons(mac, dev_name):
+                entities.append(
+                    UniFiButtonEntity(
+                        coordinator=coordinator,
+                        description=desc,
+                        hub=hub,
+                        mac=mac,
+                        device_name=dev_name,
+                        device_model=dev_model,
+                    )
                 )
-            )
 
     # -- PoE port power-cycle buttons (per PoE port on switches) ------------
-    for mac, device in hub.device_coordinator.devices.items():
-        if device.type != "usw":
-            continue
-
-        dev_name = device.name or f"Switch {mac}"
-        dev_model = device.model_name or device.model or "UniFi Switch"
-
-        for port in device.ports:
-            if port.idx <= 0:
-                continue
-            if not (port.poe_enable or port.poe_mode):
+    if hub.get_option(CONF_ENABLE_DEVICE_CONTROLS, True):
+        for mac, device in hub.device_coordinator.devices.items():
+            if device.type != "usw":
                 continue
 
-            port_name = port.name or f"Port {port.idx}"
-            desc = _make_power_cycle_button(mac, port.idx, port_name)
-            entities.append(
-                UniFiButtonEntity(
-                    coordinator=coordinator,
-                    description=desc,
-                    hub=hub,
-                    mac=mac,
-                    device_name=dev_name,
-                    device_model=dev_model,
+            dev_name = device.name or f"Switch {mac}"
+            dev_model = device.model_name or device.model or "UniFi Switch"
+
+            for port in device.ports:
+                if port.idx <= 0:
+                    continue
+                if not (port.poe_enable or port.poe_mode):
+                    continue
+
+                port_name = port.name or f"Port {port.idx}"
+                desc = _make_power_cycle_button(mac, port.idx, port_name)
+                entities.append(
+                    UniFiButtonEntity(
+                        coordinator=coordinator,
+                        description=desc,
+                        hub=hub,
+                        mac=mac,
+                        device_name=dev_name,
+                        device_model=dev_model,
+                    )
                 )
-            )
 
     _LOGGER.debug(
         "Setting up %d button entities for gateway %s", len(entities), gw_name

@@ -38,8 +38,12 @@ from .const import (
     CONF_CLOUD_API_KEY,
     CONF_CLOUD_ENABLED,
     CONF_ENABLE_ALARMS,
+    CONF_ENABLE_CLIENT_CONTROLS,
     CONF_ENABLE_CLOUD,
+    CONF_ENABLE_DEVICE_CONTROLS,
+    CONF_ENABLE_DEVICE_SENSORS,
     CONF_ENABLE_DPI,
+    CONF_ENABLE_PER_CLIENT_SENSORS,
     CONF_ENABLE_VPN,
     CONF_ENABLE_WAN_MONITORING,
     CONF_HOST,
@@ -142,15 +146,24 @@ STEP_CLOUD_SCHEMA = vol.Schema(
 
 STEP_FEATURES_SCHEMA = vol.Schema(
     {
+        # Group 1 — Network Monitoring
+        vol.Required(
+            CONF_ENABLE_WAN_MONITORING, default=True
+        ): BooleanSelector(),
         vol.Required(
             CONF_TRACK_CLIENTS, default=DEFAULT_TRACK_CLIENTS
         ): BooleanSelector(),
         vol.Required(
-            CONF_ENABLE_WAN_MONITORING, default=True
+            CONF_ENABLE_DEVICE_SENSORS, default=True
         ): BooleanSelector(),
-        vol.Required(CONF_ENABLE_DPI, default=False): BooleanSelector(),
+        # Group 2 — Security & Analysis
         vol.Required(CONF_ENABLE_ALARMS, default=True): BooleanSelector(),
+        vol.Required(CONF_ENABLE_DPI, default=False): BooleanSelector(),
         vol.Required(CONF_ENABLE_VPN, default=True): BooleanSelector(),
+        # Group 3 — Advanced
+        vol.Required(CONF_ENABLE_PER_CLIENT_SENSORS, default=False): BooleanSelector(),
+        vol.Required(CONF_ENABLE_CLIENT_CONTROLS, default=True): BooleanSelector(),
+        vol.Required(CONF_ENABLE_DEVICE_CONTROLS, default=True): BooleanSelector(),
     }
 )
 
@@ -578,25 +591,48 @@ class UniFiNetworkHAOptionsFlow(OptionsFlow):
         current = self._options
         schema = vol.Schema(
             {
+                # ── Group 1 — Network Monitoring (default: on) ────────
+                vol.Required(
+                    CONF_ENABLE_WAN_MONITORING,
+                    default=current.get(CONF_ENABLE_WAN_MONITORING, True),
+                ): BooleanSelector(),
                 vol.Required(
                     CONF_TRACK_CLIENTS,
                     default=current.get(CONF_TRACK_CLIENTS, DEFAULT_TRACK_CLIENTS),
                 ): BooleanSelector(),
                 vol.Required(
-                    CONF_ENABLE_WAN_MONITORING,
-                    default=current.get(CONF_ENABLE_WAN_MONITORING, True),
+                    CONF_ENABLE_DEVICE_SENSORS,
+                    default=current.get(CONF_ENABLE_DEVICE_SENSORS, True),
+                ): BooleanSelector(),
+                # ── Group 2 — Security & Analysis ─────────────────────
+                vol.Required(
+                    CONF_ENABLE_ALARMS,
+                    default=current.get(CONF_ENABLE_ALARMS, True),
                 ): BooleanSelector(),
                 vol.Required(
                     CONF_ENABLE_DPI,
                     default=current.get(CONF_ENABLE_DPI, False),
                 ): BooleanSelector(),
                 vol.Required(
-                    CONF_ENABLE_ALARMS,
-                    default=current.get(CONF_ENABLE_ALARMS, True),
-                ): BooleanSelector(),
-                vol.Required(
                     CONF_ENABLE_VPN,
                     default=current.get(CONF_ENABLE_VPN, True),
+                ): BooleanSelector(),
+                # ── Group 3 — Advanced ────────────────────────────────
+                vol.Required(
+                    CONF_ENABLE_PER_CLIENT_SENSORS,
+                    default=current.get(CONF_ENABLE_PER_CLIENT_SENSORS, False),
+                ): BooleanSelector(),
+                vol.Required(
+                    CONF_ENABLE_CLIENT_CONTROLS,
+                    default=current.get(CONF_ENABLE_CLIENT_CONTROLS, True),
+                ): BooleanSelector(),
+                vol.Required(
+                    CONF_ENABLE_DEVICE_CONTROLS,
+                    default=current.get(CONF_ENABLE_DEVICE_CONTROLS, True),
+                ): BooleanSelector(),
+                vol.Required(
+                    CONF_ENABLE_CLOUD,
+                    default=current.get(CONF_ENABLE_CLOUD, False),
                 ): BooleanSelector(),
             }
         )

@@ -1,9 +1,9 @@
-# UniFi Network HA
+# Advanced UniFi Network HA
 
-A comprehensive [Home Assistant](https://www.home-assistant.io/) custom integration for **UniFi Dream Router 7** and all UniFi network gateways. Combines the features of four existing UniFi integrations into one, and adds WAN failover detection, IDS/IPS alerts, VPN monitoring, DPI traffic analysis, and cloud ISP metrics.
+A comprehensive [Home Assistant](https://www.home-assistant.io/) custom integration for **all UniFi gateways and network devices**. Combines the features of four existing UniFi integrations into one, and adds WAN failover detection, IDS/IPS alerts, VPN monitoring, DPI traffic analysis, and cloud ISP metrics.
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
-[![GitHub Release](https://img.shields.io/github/v/release/mikula/UDM7-HA)](https://github.com/mikula/UDM7-HA/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/Futuretunes/advanced-unifi-network-ha)](https://github.com/Futuretunes/advanced-unifi-network-ha/releases)
 
 ## Why this integration?
 
@@ -29,13 +29,13 @@ A comprehensive [Home Assistant](https://www.home-assistant.io/) custom integrat
 
 Any UniFi OS gateway running Network Application 7.x+:
 
-- **Dream Router 7** (UDR7)
-- Dream Router (UDR)
+- Cloud Gateway Ultra (UCG-Ultra)
 - Dream Machine (UDM)
 - Dream Machine Pro / SE / Pro Max
-- Next-Gen Gateway (UXG-Pro, UXG-Enterprise, UXG-Lite)
-- Cloud Gateway Ultra (UCG-Ultra)
+- Dream Router (UDR)
+- Dream Router 7 (UDR7)
 - Enterprise Fortress Gateway (EFG)
+- Next-Gen Gateway (UXG-Pro, UXG-Enterprise, UXG-Lite)
 - Security Gateway (USG, USG-Pro-4)
 
 All adopted APs and switches are also monitored.
@@ -46,8 +46,8 @@ All adopted APs and switches are also monitored.
 
 1. Open HACS in Home Assistant
 2. Click the three dots in the top right and select **Custom repositories**
-3. Add `https://github.com/mikula/UDM7-HA` with category **Integration**
-4. Search for "UniFi Network HA" and install
+3. Add `https://github.com/Futuretunes/advanced-unifi-network-ha` with category **Integration**
+4. Search for "Advanced UniFi Network HA" and install
 5. Restart Home Assistant
 
 ### Manual
@@ -57,7 +57,7 @@ All adopted APs and switches are also monitored.
 
 ## Configuration
 
-Add the integration via **Settings > Devices & Services > Add Integration > UniFi Network HA**.
+Add the integration via **Settings > Devices & Services > Add Integration > Advanced UniFi Network HA**.
 
 ### Setup steps
 
@@ -333,7 +333,7 @@ This integration uses a separate domain (`unifi_network_ha`) and unique ID names
 
 ## Options
 
-After setup, configure via **Settings > Devices & Services > UniFi Network HA > Configure**:
+After setup, configure via **Settings > Devices & Services > Advanced UniFi Network HA > Configure**:
 
 - **Features** — Enable/disable device tracking, WAN monitoring, DPI, alarms, VPN
 - **Update intervals** — Adjust polling frequency for each coordinator (5s to 3600s)
@@ -361,7 +361,7 @@ After setup, configure via **Settings > Devices & Services > UniFi Network HA > 
 
 ### Diagnostics
 
-Go to **Settings > Devices & Services > UniFi Network HA > three dots > Download diagnostics** for a redacted snapshot of your integration state.
+Go to **Settings > Devices & Services > Advanced UniFi Network HA > three dots > Download diagnostics** for a redacted snapshot of your integration state.
 
 ### Logs
 
@@ -375,7 +375,7 @@ logger:
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or pull request on [GitHub](https://github.com/mikula/UDM7-HA).
+Contributions are welcome! Please open an issue or pull request on [GitHub](https://github.com/Futuretunes/advanced-unifi-network-ha).
 
 ## License
 

@@ -1,0 +1,44 @@
+blueprint:
+  name: "UniFi New Device Alert"
+  description: "Get notified when a previously unseen device connects to your UniFi network."
+  domain: automation
+  author: "Advanced UniFi Network HA"
+  input:
+    notify_service:
+      name: Notification Service
+      description: "The notification service to use."
+      selector:
+        text:
+    notify_title:
+      name: Notification Title
+      default: "New Device Connected"
+      selector:
+        text:
+
+trigger:
+  - platform: event
+    event_type: entity_registry_updated
+    event_data:
+      action: create
+
+condition:
+  - condition: template
+    value_template: >-
+      {{ trigger.event.data.entity_id is defined and
+         trigger.event.data.entity_id.startswith('device_tracker.') and
+         'unifi_network_ha' in (state_attr(trigger.event.data.entity_id, 'integration') | default('', true)) }}
+
+action:
+  - delay:
+      seconds: 5
+  - service: !input notify_service
+    data:
+      title: !input notify_title
+      message: >-
+        New device detected: {{ state_attr(trigger.event.data.entity_id, 'friendly_name') | default('Unknown') }}
+        {% if state_attr(trigger.event.data.entity_id, 'ip') %}
+        IP: {{ state_attr(trigger.event.data.entity_id, 'ip') }}
+        {% endif %}
+        {% if state_attr(trigger.event.data.entity_id, 'ssid') %}
+        SSID: {{ state_attr(trigger.event.data.entity_id, 'ssid') }}
+        {% endif %}

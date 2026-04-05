@@ -1,0 +1,52 @@
+blueprint:
+  name: "UniFi WAN Failover Notification"
+  description: "Send a notification when your UniFi gateway switches between WAN connections (failover or recovery)."
+  domain: automation
+  author: "Advanced UniFi Network HA"
+  input:
+    failover_entity:
+      name: WAN Failover Event Entity
+      description: "The WAN failover event entity from your gateway."
+      selector:
+        entity:
+          filter:
+            - integration: unifi_network_ha
+              domain: event
+    notify_service:
+      name: Notification Service
+      description: "The notification service to use (e.g., notify.mobile_app_phone)."
+      selector:
+        text:
+    notify_title:
+      name: Notification Title
+      description: "Title for the notification."
+      default: "WAN Failover Alert"
+      selector:
+        text:
+
+trigger:
+  - platform: state
+    entity_id: !input failover_entity
+
+condition:
+  - condition: template
+    value_template: "{{ trigger.to_state.attributes.event_type is defined }}"
+
+action:
+  - service: !input notify_service
+    data:
+      title: !input notify_title
+      message: >-
+        {% set event_type = trigger.to_state.attributes.event_type %}
+        {% set prev = trigger.to_state.attributes.previous_wan | default('unknown') %}
+        {% set new = trigger.to_state.attributes.new_wan | default('unknown') %}
+        {% if event_type == 'failover' %}
+        WAN FAILOVER: Primary connection lost. Switched from {{ prev }} to {{ new }}.
+        {% elif event_type == 'recovery' %}
+        WAN RECOVERED: Connection restored. Switched back from {{ prev }} to {{ new }}.
+        {% else %}
+        WAN CHANGE: Active connection changed from {{ prev }} to {{ new }}.
+        {% endif %}
+      data:
+        priority: high
+        ttl: 0

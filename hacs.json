@@ -1,5 +1,5 @@
 {
-  "name": "UniFi Network HA",
+  "name": "Advanced UniFi Network HA",
   "render_readme": true,
   "homeassistant": "2024.12.0"
 }

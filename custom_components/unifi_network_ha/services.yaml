@@ -34,3 +34,25 @@ unblock_client:
       required: true
       selector:
         text:
+
+kick_client:
+  name: Kick Client
+  description: Disconnect a client from the network (they can reconnect).
+  fields:
+    mac:
+      name: MAC Address
+      description: MAC address of the client to disconnect.
+      required: true
+      selector:
+        text:
+
+forget_client:
+  name: Forget Client
+  description: Remove a client from the known clients list on the controller.
+  fields:
+    mac:
+      name: MAC Address
+      description: MAC address of the client to forget.
+      required: true
+      selector:
+        text:

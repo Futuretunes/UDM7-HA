@@ -290,6 +290,40 @@ class UniFiHub:
             )
             self.client_coordinator.set_websocket_unsubscribe(unsub_clients)
 
+            # WLAN config changes — trigger a data refresh for switch platform
+            def _on_wlan_change(msg_type: str, data: list[dict]) -> None:
+                """Schedule a refresh when WLAN config changes."""
+                self.hass.async_create_task(
+                    self.device_coordinator.async_request_refresh()
+                )
+
+            self.websocket.subscribe(
+                _on_wlan_change,
+                [
+                    WebSocketMessageType.WLAN_SYNC,
+                    WebSocketMessageType.WLAN_ADD,
+                    WebSocketMessageType.WLAN_DELETE,
+                ],
+            )
+
+            # Port forward, firewall changes
+            def _on_rule_change(msg_type: str, data: list[dict]) -> None:
+                """Schedule a refresh when port-forward or firewall rules change."""
+                self.hass.async_create_task(
+                    self.device_coordinator.async_request_refresh()
+                )
+
+            self.websocket.subscribe(
+                _on_rule_change,
+                [
+                    WebSocketMessageType.PORT_FORWARD_SYNC,
+                    WebSocketMessageType.PORT_FORWARD_ADD,
+                    WebSocketMessageType.PORT_FORWARD_DELETE,
+                    WebSocketMessageType.FIREWALL_RULE_SYNC,
+                    WebSocketMessageType.FIREWALL_GROUP_SYNC,
+                ],
+            )
+
         # Alarm coordinator (optional, enabled by default)
         if self.get_option(CONF_ENABLE_ALARMS, True):
             alarm_interval = self.get_option(

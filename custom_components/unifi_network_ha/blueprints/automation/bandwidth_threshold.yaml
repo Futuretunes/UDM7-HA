@@ -1,0 +1,65 @@
+blueprint:
+  name: "UniFi Bandwidth Threshold Alert"
+  description: "Get notified when your WAN download or upload rate exceeds a defined threshold."
+  domain: automation
+  author: "Advanced UniFi Network HA"
+  input:
+    bandwidth_sensor:
+      name: WAN Bandwidth Sensor
+      description: "Select the WAN download or upload rate sensor."
+      selector:
+        entity:
+          filter:
+            - integration: unifi_network_ha
+              domain: sensor
+              device_class: data_rate
+    threshold:
+      name: Threshold (bytes/sec)
+      description: "Bandwidth threshold in bytes per second. Example: 100000000 = ~100 MB/s."
+      default: 100000000
+      selector:
+        number:
+          min: 1000
+          max: 10000000000
+          step: 1000
+          unit_of_measurement: "B/s"
+          mode: box
+    notify_service:
+      name: Notification Service
+      selector:
+        text:
+    cooldown:
+      name: Cooldown Period
+      description: "Minimum time between alerts (minutes)."
+      default: 15
+      selector:
+        number:
+          min: 1
+          max: 1440
+          unit_of_measurement: "min"
+
+trigger:
+  - platform: numeric_state
+    entity_id: !input bandwidth_sensor
+    above: !input threshold
+
+condition:
+  - condition: template
+    value_template: >-
+      {% set last = state_attr('automation.' ~ this.attributes.friendly_name | slugify, 'last_triggered') %}
+      {{ last is none or (now() - last).total_seconds() > (cooldown | int * 60) }}
+    variables:
+      cooldown: !input cooldown
+
+action:
+  - service: !input notify_service
+    data:
+      title: "High Bandwidth Alert"
+      message: >-
+        {{ state_attr(trigger.entity_id, 'friendly_name') }} is at
+        {{ (trigger.to_state.state | float / 1000000) | round(1) }} MB/s,
+        exceeding the threshold of {{ (threshold | float / 1000000) | round(1) }} MB/s.
+      data:
+        priority: high
+    variables:
+      threshold: !input threshold

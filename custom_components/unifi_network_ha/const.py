@@ -40,6 +40,12 @@ CONF_ENABLE_ALARMS: Final = "enable_alarms"
 CONF_ENABLE_VPN: Final = "enable_vpn"
 CONF_ENABLE_CLOUD: Final = "enable_cloud"
 
+# Feature group toggles
+CONF_ENABLE_DEVICE_SENSORS: Final = "enable_device_sensors"
+CONF_ENABLE_PER_CLIENT_SENSORS: Final = "enable_per_client_sensors"
+CONF_ENABLE_CLIENT_CONTROLS: Final = "enable_client_controls"
+CONF_ENABLE_DEVICE_CONTROLS: Final = "enable_device_controls"
+
 # Default values
 DEFAULT_PORT: Final = 443
 DEFAULT_SITE: Final = "default"

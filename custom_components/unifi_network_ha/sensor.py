@@ -23,6 +23,7 @@ from homeassistant.const import (
     EntityCategory,
     PERCENTAGE,
     UnitOfDataRate,
+    UnitOfInformation,
     UnitOfTemperature,
     UnitOfTime,
 )
@@ -33,13 +34,17 @@ from .api.models import DevicePort
 from .const import (
     CONF_ENABLE_ALARMS,
     CONF_ENABLE_CLOUD,
+    CONF_ENABLE_DEVICE_SENSORS,
     CONF_ENABLE_DPI,
+    CONF_ENABLE_PER_CLIENT_SENSORS,
     CONF_ENABLE_VPN,
     DeviceState,
 )
 from .coordinators.base import UniFiDataUpdateCoordinator
 from .entity import UniFiEntity
 from .hub import UniFiHub
+
+from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, DeviceInfo
 
 # Type alias used in __init__.py — import so the platform signature matches.
 from . import UniFiConfigEntry
@@ -82,6 +87,7 @@ def _get_coordinator(hub: UniFiHub, key: str) -> UniFiDataUpdateCoordinator:
         "alarm": hub.alarm_coordinator,
         "dpi": hub.dpi_coordinator,
         "cloud": hub.cloud_coordinator,
+        "client": hub.client_coordinator,
     }
     coordinator = mapping.get(key)
     if coordinator is None:
@@ -254,6 +260,36 @@ GATEWAY_SENSORS: tuple[UniFiSensorDescription, ...] = (
         value_fn=lambda hub: _health_wan(hub, "latency"),
         coordinator_key="health",
     ),
+    # ── Fan / Memory ───────────────────────────────────────────────────
+    UniFiSensorDescription(
+        key="fan_level",
+        translation_key="fan_level",
+        name="Fan level",
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:fan",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda hub: _gw(hub, "fan_level"),
+    ),
+    UniFiSensorDescription(
+        key="memory_total",
+        translation_key="memory_total",
+        name="Memory total",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda hub: _gw(hub, "mem_total"),
+    ),
+    UniFiSensorDescription(
+        key="memory_used",
+        translation_key="memory_used",
+        name="Memory used",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+        value_fn=lambda hub: _gw(hub, "mem_used"),
+    ),
 )
 
 
@@ -373,6 +409,31 @@ HEALTH_SUBSYSTEM_SENSORS: tuple[UniFiSensorDescription, ...] = (
         suggested_display_precision=0,
         icon="mdi:upload-network",
         value_fn=lambda hub: _health_sub(hub, "lan", "tx_bytes_r"),
+        coordinator_key="health",
+    ),
+    # ── Device adoption counts (from WAN subsystem) ────────────────────
+    UniFiSensorDescription(
+        key="adopted_devices",
+        name="Adopted devices",
+        icon="mdi:devices",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda hub: _health_sub(hub, "wan", "num_adopted"),
+        coordinator_key="health",
+    ),
+    UniFiSensorDescription(
+        key="pending_devices",
+        name="Pending devices",
+        icon="mdi:clock-outline",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda hub: _health_sub(hub, "wan", "num_pending"),
+        coordinator_key="health",
+    ),
+    UniFiSensorDescription(
+        key="disconnected_devices",
+        name="Disconnected devices",
+        icon="mdi:lan-disconnect",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda hub: _health_sub(hub, "wan", "num_disconnected"),
         coordinator_key="health",
     ),
 )
@@ -890,6 +951,117 @@ def _wan_rate_attr(hub: UniFiHub, wan_name: str, attr: str):
 
 
 # ---------------------------------------------------------------------------
+# VRRP / Shadow Mode sensor (conditional — only created when gateway has VRRP)
+# ---------------------------------------------------------------------------
+
+VRRP_SENSOR = UniFiSensorDescription(
+    key="vrrp_state",
+    name="VRRP state",
+    icon="mdi:shield-sync",
+    entity_category=EntityCategory.DIAGNOSTIC,
+    value_fn=lambda hub: _gw(hub, "vrrp_state") or None,
+    coordinator_key="device",
+)
+
+
+# ---------------------------------------------------------------------------
+# Per-client sensor helpers and factory
+# ---------------------------------------------------------------------------
+
+def _client_attr(hub: UniFiHub, mac: str, attr: str):
+    """Read an attribute from a client."""
+    if hub.client_coordinator is None:
+        return None
+    client = hub.client_coordinator.clients.get(mac)
+    if client is None:
+        return None
+    value = getattr(client, attr, None)
+    if value == 0 and attr in ("signal", "satisfaction"):
+        return None  # 0 means not available for these
+    return value
+
+
+def _make_client_sensors(client_mac: str, client_name: str) -> list[UniFiSensorDescription]:
+    """Create sensor descriptions for a single network client."""
+    safe_mac = client_mac.replace(":", "_")
+
+    return [
+        UniFiSensorDescription(
+            key=f"client_{safe_mac}_signal",
+            name=f"{client_name} signal strength",
+            native_unit_of_measurement="dBm",
+            device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+            state_class=SensorStateClass.MEASUREMENT,
+            entity_registry_enabled_default=False,
+            icon="mdi:wifi",
+            value_fn=lambda hub, _m=client_mac: _client_attr(hub, _m, "signal"),
+            coordinator_key="client",
+        ),
+        UniFiSensorDescription(
+            key=f"client_{safe_mac}_rx_rate",
+            name=f"{client_name} RX rate",
+            native_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
+            device_class=SensorDeviceClass.DATA_RATE,
+            state_class=SensorStateClass.MEASUREMENT,
+            entity_registry_enabled_default=False,
+            value_fn=lambda hub, _m=client_mac: _client_attr(hub, _m, "rx_rate"),
+            coordinator_key="client",
+        ),
+        UniFiSensorDescription(
+            key=f"client_{safe_mac}_tx_rate",
+            name=f"{client_name} TX rate",
+            native_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
+            device_class=SensorDeviceClass.DATA_RATE,
+            state_class=SensorStateClass.MEASUREMENT,
+            entity_registry_enabled_default=False,
+            value_fn=lambda hub, _m=client_mac: _client_attr(hub, _m, "tx_rate"),
+            coordinator_key="client",
+        ),
+        UniFiSensorDescription(
+            key=f"client_{safe_mac}_rx_bandwidth",
+            name=f"{client_name} download bandwidth",
+            native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
+            device_class=SensorDeviceClass.DATA_RATE,
+            state_class=SensorStateClass.MEASUREMENT,
+            entity_registry_enabled_default=False,
+            icon="mdi:download",
+            value_fn=lambda hub, _m=client_mac: _client_attr(hub, _m, "rx_bytes_r"),
+            coordinator_key="client",
+        ),
+        UniFiSensorDescription(
+            key=f"client_{safe_mac}_tx_bandwidth",
+            name=f"{client_name} upload bandwidth",
+            native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
+            device_class=SensorDeviceClass.DATA_RATE,
+            state_class=SensorStateClass.MEASUREMENT,
+            entity_registry_enabled_default=False,
+            icon="mdi:upload",
+            value_fn=lambda hub, _m=client_mac: _client_attr(hub, _m, "tx_bytes_r"),
+            coordinator_key="client",
+        ),
+        UniFiSensorDescription(
+            key=f"client_{safe_mac}_satisfaction",
+            name=f"{client_name} satisfaction",
+            native_unit_of_measurement=PERCENTAGE,
+            state_class=SensorStateClass.MEASUREMENT,
+            entity_registry_enabled_default=False,
+            icon="mdi:emoticon-happy-outline",
+            value_fn=lambda hub, _m=client_mac: _client_attr(hub, _m, "satisfaction"),
+            coordinator_key="client",
+        ),
+        UniFiSensorDescription(
+            key=f"client_{safe_mac}_uptime",
+            name=f"{client_name} uptime",
+            device_class=SensorDeviceClass.DURATION,
+            native_unit_of_measurement=UnitOfTime.SECONDS,
+            entity_registry_enabled_default=False,
+            value_fn=lambda hub, _m=client_mac: _client_attr(hub, _m, "uptime"),
+            coordinator_key="client",
+        ),
+    ]
+
+
+# ---------------------------------------------------------------------------
 # Per-AP radio sensor factories
 # ---------------------------------------------------------------------------
 
@@ -1064,6 +1236,38 @@ def _make_switch_port_sensors(
             )
         )
 
+    # STP state — diagnostic string sensor.
+    sensors.append(
+        UniFiSensorDescription(
+            key=f"{prefix}_stp_state",
+            translation_key="port_stp_state",
+            name=f"{port_label} STP state",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            icon="mdi:transit-connection-variant",
+            value_fn=lambda hub, _m=mac, _i=idx: (
+                getattr(_get_device_port(hub, _m, _i), "stp_state", None) or None
+            ),
+        )
+    )
+
+    # SFP temperature — only if port has an SFP module inserted.
+    if port.sfp_found:
+        sensors.append(
+            UniFiSensorDescription(
+                key=f"{prefix}_sfp_temperature",
+                translation_key="port_sfp_temperature",
+                name=f"{port_label} SFP temperature",
+                device_class=SensorDeviceClass.TEMPERATURE,
+                native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+                state_class=SensorStateClass.MEASUREMENT,
+                suggested_display_precision=1,
+                icon="mdi:thermometer",
+                value_fn=lambda hub, _m=mac, _i=idx: (
+                    getattr(_get_device_port(hub, _m, _i), "sfp_temperature", None)
+                ),
+            )
+        )
+
     return sensors
 
 
@@ -1088,6 +1292,22 @@ class UniFiSensorEntity(UniFiEntity, SensorEntity):
                 exc_info=True,
             )
             return None
+
+
+class UniFiClientSensorEntity(UniFiSensorEntity):
+    """Sensor entity that belongs to a client device (uses CONNECTION_NETWORK_MAC)."""
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info using CONNECTION_NETWORK_MAC to match the device_tracker device."""
+        client = None
+        if self._hub.client_coordinator:
+            client = self._hub.client_coordinator.all_known.get(self._device_mac)
+        return DeviceInfo(
+            connections={(CONNECTION_NETWORK_MAC, self._device_mac)},
+            name=self._device_name,
+            manufacturer=client.oui if client else None,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1254,47 +1474,82 @@ async def async_setup_entry(
                 )
             )
 
-    # ── Per-AP radio sensors ──────────────────────────────────────────
-    for mac, device in hub.device_coordinator.devices.items():
-        if device.type != "uap":
-            continue
-        dev_name = device.name or f"AP {mac}"
-        dev_model = device.model_name or device.model or "UniFi AP"
-        for radio in device.radios:
-            if not radio.radio:
-                continue
-            for desc in _make_ap_radio_sensors(mac, radio.radio):
+    # ── VRRP state sensor (conditional on gateway having VRRP) ────────
+    if gateway.vrrp_enabled or gateway.vrrp_state:
+        coordinator = _get_coordinator(hub, VRRP_SENSOR.coordinator_key)
+        entities.append(
+            UniFiSensorEntity(
+                coordinator=coordinator,
+                description=VRRP_SENSOR,
+                hub=hub,
+                mac=hub.gateway_mac,
+                device_name=gw_name,
+                device_model=gw_model,
+            )
+        )
+
+    # ── Per-client sensors (gated behind CONF_ENABLE_PER_CLIENT_SENSORS) ──
+    if hub.get_option(CONF_ENABLE_PER_CLIENT_SENSORS, False) and hub.client_coordinator:
+        for mac, client in hub.client_coordinator.clients.items():
+            client_name = client.name or client.hostname or mac
+            for desc in _make_client_sensors(mac, client_name):
+                coordinator = _get_coordinator(hub, desc.coordinator_key)
+                if coordinator is None:
+                    continue
                 entities.append(
-                    UniFiSensorEntity(
-                        coordinator=hub.device_coordinator,
+                    UniFiClientSensorEntity(
+                        coordinator=coordinator,
                         description=desc,
                         hub=hub,
                         mac=mac,
-                        device_name=dev_name,
-                        device_model=dev_model,
+                        device_name=client_name,
+                        device_model=client.oui or "Network Client",
                     )
                 )
 
-    # ── Per-switch-port sensors ────────────────────────────────────────
-    for mac, device in hub.device_coordinator.devices.items():
-        if device.type != "usw":
-            continue
-        dev_name = device.name or f"Switch {mac}"
-        dev_model = device.model_name or device.model or "UniFi Switch"
-        for port in device.ports:
-            if port.idx <= 0:
+    # ── Per-AP radio sensors ──────────────────────────────────────────
+    if hub.get_option(CONF_ENABLE_DEVICE_SENSORS, True):
+        for mac, device in hub.device_coordinator.devices.items():
+            if device.type != "uap":
                 continue
-            for desc in _make_switch_port_sensors(mac, port):
-                entities.append(
-                    UniFiSensorEntity(
-                        coordinator=hub.device_coordinator,
-                        description=desc,
-                        hub=hub,
-                        mac=mac,
-                        device_name=dev_name,
-                        device_model=dev_model,
+            dev_name = device.name or f"AP {mac}"
+            dev_model = device.model_name or device.model or "UniFi AP"
+            for radio in device.radios:
+                if not radio.radio:
+                    continue
+                for desc in _make_ap_radio_sensors(mac, radio.radio):
+                    entities.append(
+                        UniFiSensorEntity(
+                            coordinator=hub.device_coordinator,
+                            description=desc,
+                            hub=hub,
+                            mac=mac,
+                            device_name=dev_name,
+                            device_model=dev_model,
+                        )
                     )
-                )
+
+    # ── Per-switch-port sensors ────────────────────────────────────────
+    if hub.get_option(CONF_ENABLE_DEVICE_SENSORS, True):
+        for mac, device in hub.device_coordinator.devices.items():
+            if device.type != "usw":
+                continue
+            dev_name = device.name or f"Switch {mac}"
+            dev_model = device.model_name or device.model or "UniFi Switch"
+            for port in device.ports:
+                if port.idx <= 0:
+                    continue
+                for desc in _make_switch_port_sensors(mac, port):
+                    entities.append(
+                        UniFiSensorEntity(
+                            coordinator=hub.device_coordinator,
+                            description=desc,
+                            hub=hub,
+                            mac=mac,
+                            device_name=dev_name,
+                            device_model=dev_model,
+                        )
+                    )
 
     _LOGGER.debug(
         "Setting up %d sensor entities for gateway %s", len(entities), gw_name

@@ -20,7 +20,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_ENABLE_VPN
+from .const import CONF_ENABLE_DEVICE_SENSORS, CONF_ENABLE_VPN
 from .coordinators.base import UniFiDataUpdateCoordinator
 from .entity import UniFiEntity
 from .hub import UniFiHub
@@ -182,6 +182,31 @@ def _vpn_active(hub: UniFiHub) -> bool | None:
 
 
 # ---------------------------------------------------------------------------
+# VRRP / Shadow Mode binary sensors (conditional on gateway VRRP data)
+# ---------------------------------------------------------------------------
+
+VRRP_BINARY_SENSORS: tuple[UniFiBinarySensorDescription, ...] = (
+    UniFiBinarySensorDescription(
+        key="shadow_mode_active",
+        name="Shadow Mode active",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:shield-sync",
+        value_fn=lambda hub: _gw_vrrp(hub),
+        coordinator_key="device",
+    ),
+)
+
+
+def _gw_vrrp(hub: UniFiHub) -> bool | None:
+    """Return True when VRRP / Shadow Mode is enabled on the gateway."""
+    gw = _gateway_device(hub)
+    if gw is None:
+        return None
+    return gw.vrrp_enabled
+
+
+# ---------------------------------------------------------------------------
 # Dynamic per-WAN binary sensor factories
 # ---------------------------------------------------------------------------
 
@@ -224,6 +249,44 @@ def _wan_internet(hub: UniFiHub, wan_name: str) -> bool | None:
     if wi is None:
         return None
     return wi.internet
+
+
+# ---------------------------------------------------------------------------
+# Dynamic per-switch-port binary sensor factories
+# ---------------------------------------------------------------------------
+
+def _get_device_port(hub: UniFiHub, mac: str, port_idx: int):
+    """Return the port with *port_idx* on the device with *mac*."""
+    if hub.device_coordinator is None:
+        return None
+    device = hub.device_coordinator.devices.get(mac)
+    if device is None:
+        return None
+    for port in device.ports:
+        if port.idx == port_idx:
+            return port
+    return None
+
+
+def _make_switch_port_binary_sensors(
+    mac: str, port_idx: int, port_label: str
+) -> list[UniFiBinarySensorDescription]:
+    """Create binary sensor descriptions for a single port on a switch."""
+    prefix = f"port_{port_idx}"
+
+    return [
+        # SFP detected
+        UniFiBinarySensorDescription(
+            key=f"{prefix}_sfp_detected",
+            name=f"{port_label} SFP detected",
+            icon="mdi:chip",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            value_fn=lambda hub, _m=mac, _i=port_idx: (
+                getattr(_get_device_port(hub, _m, _i), "sfp_found", None)
+            ),
+            coordinator_key="device",
+        ),
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -304,6 +367,21 @@ async def async_setup_entry(
                 )
             )
 
+    # -- VRRP / Shadow Mode binary sensors (conditional on gateway VRRP) ------
+    if gateway.vrrp_enabled or gateway.vrrp_state:
+        for desc in VRRP_BINARY_SENSORS:
+            coordinator = _get_coordinator(hub, desc.coordinator_key)
+            entities.append(
+                UniFiBinarySensorEntity(
+                    coordinator=coordinator,
+                    description=desc,
+                    hub=hub,
+                    mac=hub.gateway_mac,
+                    device_name=gw_name,
+                    device_model=gw_model,
+                )
+            )
+
     # -- Dynamic per-WAN binary sensors --------------------------------------
     for wan in gateway.wan_interfaces:
         if not wan.name:
@@ -320,6 +398,33 @@ async def async_setup_entry(
                     device_model=gw_model,
                 )
             )
+
+    # -- Dynamic per-switch-port binary sensors (SFP) -------------------------
+    if hub.get_option(CONF_ENABLE_DEVICE_SENSORS, True) and hub.device_coordinator is not None:
+        for mac, device in hub.device_coordinator.devices.items():
+            if device.type != "usw":
+                continue
+            dev_name = device.name or f"Switch {mac}"
+            dev_model = device.model_name or device.model or "UniFi Switch"
+            for port in device.ports:
+                if port.idx <= 0:
+                    continue
+                # Only create SFP binary sensors for ports that have SFP capability
+                if not port.sfp_found:
+                    continue
+                port_label = port.name or f"Port {port.idx}"
+                for desc in _make_switch_port_binary_sensors(mac, port.idx, port_label):
+                    coordinator = _get_coordinator(hub, desc.coordinator_key)
+                    entities.append(
+                        UniFiBinarySensorEntity(
+                            coordinator=coordinator,
+                            description=desc,
+                            hub=hub,
+                            mac=mac,
+                            device_name=dev_name,
+                            device_model=dev_model,
+                        )
+                    )
 
     _LOGGER.debug(
         "Setting up %d binary sensor entities for gateway %s",

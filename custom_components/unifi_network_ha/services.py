@@ -16,12 +16,22 @@ SERVICE_RECONNECT_CLIENT = "reconnect_client"
 SERVICE_REMOVE_CLIENTS = "remove_clients"
 SERVICE_BLOCK_CLIENT = "block_client"
 SERVICE_UNBLOCK_CLIENT = "unblock_client"
+SERVICE_KICK_CLIENT = "kick_client"
+SERVICE_FORGET_CLIENT = "forget_client"
 
 SERVICE_RECONNECT_SCHEMA = vol.Schema({
     vol.Required("mac"): cv.string,
 })
 
 SERVICE_BLOCK_SCHEMA = vol.Schema({
+    vol.Required("mac"): cv.string,
+})
+
+SERVICE_KICK_SCHEMA = vol.Schema({
+    vol.Required("mac"): cv.string,
+})
+
+SERVICE_FORGET_SCHEMA = vol.Schema({
     vol.Required("mac"): cv.string,
 })
 
@@ -79,6 +89,26 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             await hub.legacy.unblock_client(mac)
             _LOGGER.info("Unblocked client %s", mac)
 
+    async def _kick_client(call: ServiceCall) -> None:
+        """Disconnect a client from the network (they can reconnect)."""
+        mac = call.data["mac"].lower()
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            hub = entry.runtime_data
+            if hub.legacy is None:
+                continue
+            await hub.legacy.kick_client(mac)
+            _LOGGER.info("Kicked client %s", mac)
+
+    async def _forget_client(call: ServiceCall) -> None:
+        """Remove a client from the known clients list on the controller."""
+        mac = call.data["mac"].lower()
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            hub = entry.runtime_data
+            if hub.legacy is None:
+                continue
+            await hub.legacy.forget_client([mac])
+            _LOGGER.info("Forgot client %s", mac)
+
     hass.services.async_register(
         DOMAIN, SERVICE_RECONNECT_CLIENT, _reconnect_client,
         schema=SERVICE_RECONNECT_SCHEMA,
@@ -94,6 +124,14 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         DOMAIN, SERVICE_UNBLOCK_CLIENT, _unblock_client,
         schema=SERVICE_BLOCK_SCHEMA,
     )
+    hass.services.async_register(
+        DOMAIN, SERVICE_KICK_CLIENT, _kick_client,
+        schema=SERVICE_KICK_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_FORGET_CLIENT, _forget_client,
+        schema=SERVICE_FORGET_SCHEMA,
+    )
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
@@ -102,3 +140,5 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_REMOVE_CLIENTS)
     hass.services.async_remove(DOMAIN, SERVICE_BLOCK_CLIENT)
     hass.services.async_remove(DOMAIN, SERVICE_UNBLOCK_CLIENT)
+    hass.services.async_remove(DOMAIN, SERVICE_KICK_CLIENT)
+    hass.services.async_remove(DOMAIN, SERVICE_FORGET_CLIENT)
