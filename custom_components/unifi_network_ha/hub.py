@@ -27,9 +27,11 @@ from .const import (
     CONF_UPDATE_INTERVAL_ALARMS,
     CONF_UPDATE_INTERVAL_DPI,
     CONF_UPDATE_INTERVAL_CLOUD,
+    CONF_UPDATE_INTERVAL_TRAFFIC,
     CONF_ENABLE_DPI,
     CONF_ENABLE_ALARMS,
     CONF_ENABLE_CLOUD,
+    CONF_ENABLE_PROTECT,
     DEFAULT_UPDATE_INTERVAL_DEVICES,
     DEFAULT_UPDATE_INTERVAL_CLIENTS,
     DEFAULT_UPDATE_INTERVAL_HEALTH,
@@ -37,6 +39,7 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL_ALARMS,
     DEFAULT_UPDATE_INTERVAL_DPI,
     DEFAULT_UPDATE_INTERVAL_CLOUD,
+    DEFAULT_UPDATE_INTERVAL_TRAFFIC,
     AuthMethod,
 )
 from .api.client import UniFiApiClient
@@ -45,6 +48,7 @@ from .api.local_legacy import LocalLegacyApi
 from .api.local_v2 import LocalV2Api
 from .api.local_integration import LocalIntegrationApi
 from .api.cloud import CloudApi
+from .api.protect import ProtectApi
 from .api.websocket import UniFiWebSocket, WebSocketMessageType
 
 if TYPE_CHECKING:
@@ -54,6 +58,8 @@ if TYPE_CHECKING:
     from .coordinators.device import DeviceCoordinator
     from .coordinators.dpi import DpiCoordinator
     from .coordinators.health import HealthCoordinator
+    from .coordinators.protect import ProtectCoordinator
+    from .coordinators.traffic import TrafficCoordinator
     from .coordinators.wan_rate import WanRateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -78,6 +84,7 @@ class UniFiHub:
         self.v2: LocalV2Api | None = None
         self.integration: LocalIntegrationApi | None = None
         self.cloud: CloudApi | None = None
+        self.protect: ProtectApi | None = None
         self.websocket: UniFiWebSocket | None = None
 
         # Coordinators (initialized in _setup_coordinators)
@@ -88,6 +95,8 @@ class UniFiHub:
         self.alarm_coordinator: AlarmCoordinator | None = None
         self.dpi_coordinator: DpiCoordinator | None = None
         self.cloud_coordinator: CloudCoordinator | None = None
+        self.protect_coordinator: ProtectCoordinator | None = None
+        self.traffic_coordinator: TrafficCoordinator | None = None
 
         # Gateway info (detected during setup)
         self.gateway_mac: str = ""
@@ -141,6 +150,20 @@ class UniFiHub:
                     session=cloud_session,
                 )
 
+            # 4b. Set up Protect API (for gateways with NVR)
+            if self.get_option(CONF_ENABLE_PROTECT, False):
+                try:
+                    self.protect = ProtectApi(
+                        host=self._host,
+                        port=self._port,
+                        session=session,
+                        verify_ssl=self._verify_ssl,
+                        auth=auth,
+                    )
+                except Exception:
+                    _LOGGER.debug("Protect API setup skipped", exc_info=True)
+                    self.protect = None
+
             # 5. Detect gateway device
             await self._detect_gateway()
 
@@ -176,6 +199,8 @@ class UniFiHub:
             self.alarm_coordinator,
             self.dpi_coordinator,
             self.cloud_coordinator,
+            self.protect_coordinator,
+            self.traffic_coordinator,
         ]:
             if coordinator:
                 await coordinator.async_shutdown()
@@ -242,6 +267,7 @@ class UniFiHub:
         from .coordinators.device import DeviceCoordinator
         from .coordinators.dpi import DpiCoordinator
         from .coordinators.health import HealthCoordinator
+        from .coordinators.traffic import TrafficCoordinator
         from .coordinators.wan_rate import WanRateCoordinator
 
         # Create coordinators with configurable intervals
@@ -324,6 +350,13 @@ class UniFiHub:
                 ],
             )
 
+        # Traffic coordinator (always on, 5 min interval)
+        traffic_interval = self.get_option(
+            CONF_UPDATE_INTERVAL_TRAFFIC, DEFAULT_UPDATE_INTERVAL_TRAFFIC
+        )
+        self.traffic_coordinator = TrafficCoordinator(self, traffic_interval)
+        await self.traffic_coordinator.async_config_entry_first_refresh()
+
         # Alarm coordinator (optional, enabled by default)
         if self.get_option(CONF_ENABLE_ALARMS, True):
             alarm_interval = self.get_option(
@@ -359,6 +392,20 @@ class UniFiHub:
                     ],
                 )
                 self.dpi_coordinator.set_websocket_unsubscribe(unsub_dpi)
+
+        # Protect coordinator (optional, for gateways with NVR)
+        if self.protect is not None and self.get_option(CONF_ENABLE_PROTECT, False):
+            from .coordinators.protect import ProtectCoordinator
+
+            try:
+                self.protect_coordinator = ProtectCoordinator(self, 60)
+                await self.protect_coordinator.async_config_entry_first_refresh()
+                if not self.protect_coordinator.available:
+                    _LOGGER.info("UniFi Protect not available on this device")
+                    self.protect_coordinator = None
+            except Exception:
+                _LOGGER.debug("Protect coordinator setup failed", exc_info=True)
+                self.protect_coordinator = None
 
         # Cloud coordinator (optional, requires cloud API to be configured)
         if self.cloud is not None and self.get_option(CONF_ENABLE_CLOUD, True):

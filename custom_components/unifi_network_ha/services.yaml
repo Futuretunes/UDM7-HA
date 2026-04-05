@@ -56,3 +56,84 @@ forget_client:
       required: true
       selector:
         text:
+
+create_voucher:
+  name: Create Guest Voucher
+  description: Create one or more guest portal vouchers.
+  fields:
+    count:
+      name: Number of vouchers
+      description: How many vouchers to create (1-100).
+      default: 1
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 100
+    quota:
+      name: Usage quota
+      description: Number of times each voucher can be used (0 = unlimited).
+      default: 1
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+    expire:
+      name: Expiry (minutes)
+      description: How long the voucher is valid after first use.
+      default: 1440
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 525600
+          unit_of_measurement: min
+    up_bandwidth:
+      name: Upload limit (kbps)
+      description: Upload bandwidth limit in kbps. Leave empty for unlimited.
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 1000000
+          unit_of_measurement: kbps
+    down_bandwidth:
+      name: Download limit (kbps)
+      description: Download bandwidth limit in kbps. Leave empty for unlimited.
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 1000000
+          unit_of_measurement: kbps
+    byte_quota:
+      name: Data quota (MB)
+      description: Total data limit in megabytes. Leave empty for unlimited.
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 1048576
+          unit_of_measurement: MB
+    note:
+      name: Note
+      description: Optional note for identifying the voucher.
+      required: false
+      selector:
+        text:
+
+list_vouchers:
+  name: List Guest Vouchers
+  description: List all active guest vouchers. Results are fired as a unifi_network_ha_voucher_list event.
+
+revoke_voucher:
+  name: Revoke Guest Voucher
+  description: Revoke (delete) a guest voucher by its ID.
+  fields:
+    voucher_id:
+      name: Voucher ID
+      description: The _id of the voucher to revoke.
+      required: true
+      selector:
+        text:

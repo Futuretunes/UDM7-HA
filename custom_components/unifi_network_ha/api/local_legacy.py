@@ -177,6 +177,82 @@ class LocalLegacyApi:
         data = await self._client.get(self._site_path("stat/voucher"))
         return data if isinstance(data, list) else []
 
+    async def get_traffic_report(
+        self, interval: str = "hourly", attrs: list[str] | None = None
+    ) -> list[dict]:
+        """Return traffic stats for the site.
+
+        ``GET /api/s/{site}/stat/report/{interval}.site``
+
+        Args:
+            interval: ``"5minutes"``, ``"hourly"``, ``"daily"``, ``"monthly"``
+            attrs: List of attributes to include, e.g.
+                ``["bytes", "num_sta", "time", "wan-rx_bytes", "wan-tx_bytes"]``
+        """
+        params: dict[str, Any] = {}
+        if attrs:
+            params["attrs"] = attrs
+        data = await self._client.get(
+            self._site_path(f"stat/report/{interval}.site"), params=params
+        )
+        return data if isinstance(data, list) else []
+
+    async def create_voucher(
+        self,
+        count: int = 1,
+        quota: int = 1,
+        expire: int = 1440,
+        up_bandwidth: int | None = None,
+        down_bandwidth: int | None = None,
+        byte_quota: int | None = None,
+        note: str = "",
+    ) -> list[dict]:
+        """Create guest vouchers.
+
+        ``POST /api/s/{site}/cmd/hotspot`` with ``cmd=create-voucher``
+
+        Args:
+            count: Number of vouchers to create.
+            quota: Number of uses per voucher (``0`` = unlimited).
+            expire: Validity period in minutes (default 1440 = 24 h).
+            up_bandwidth: Upload bandwidth limit in kbps.
+            down_bandwidth: Download bandwidth limit in kbps.
+            byte_quota: Data transfer limit in megabytes.
+            note: Optional note attached to the voucher(s).
+        """
+        payload: dict[str, Any] = {
+            "cmd": "create-voucher",
+            "n": count,
+            "quota": quota,
+            "expire": expire,
+        }
+        if up_bandwidth is not None:
+            payload["up"] = up_bandwidth
+        if down_bandwidth is not None:
+            payload["down"] = down_bandwidth
+        if byte_quota is not None:
+            payload["bytes"] = byte_quota
+        if note:
+            payload["note"] = note
+        data = await self._client.post(
+            self._site_path("cmd/hotspot"), json=payload
+        )
+        return data if isinstance(data, list) else []
+
+    async def revoke_voucher(self, voucher_id: str) -> dict:
+        """Revoke a voucher.
+
+        ``POST /api/s/{site}/cmd/hotspot`` with ``cmd=delete-voucher``
+
+        Args:
+            voucher_id: The ``_id`` of the voucher to revoke.
+        """
+        data = await self._client.post(
+            self._site_path("cmd/hotspot"),
+            json={"cmd": "delete-voucher", "_id": voucher_id},
+        )
+        return data if isinstance(data, dict) else {}
+
     # ==================================================================
     # Command endpoints
     # ==================================================================

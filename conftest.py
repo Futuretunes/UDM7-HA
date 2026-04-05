@@ -19,6 +19,7 @@ def _make_stub(name: str) -> types.ModuleType:
         def __getattr__(self, _name): return _Anything()
         def __getitem__(self, _key): return _Anything()
         def __class_getitem__(cls, _key): return cls
+        def __mro_entries__(self, bases): return (_Anything,)
         def __bool__(self): return False
         def __iter__(self): return iter([])
 

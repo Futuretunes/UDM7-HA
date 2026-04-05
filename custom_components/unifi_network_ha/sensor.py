@@ -37,6 +37,7 @@ from .const import (
     CONF_ENABLE_DEVICE_SENSORS,
     CONF_ENABLE_DPI,
     CONF_ENABLE_PER_CLIENT_SENSORS,
+    CONF_ENABLE_PROTECT,
     CONF_ENABLE_VPN,
     DeviceState,
 )
@@ -88,6 +89,8 @@ def _get_coordinator(hub: UniFiHub, key: str) -> UniFiDataUpdateCoordinator:
         "dpi": hub.dpi_coordinator,
         "cloud": hub.cloud_coordinator,
         "client": hub.client_coordinator,
+        "traffic": hub.traffic_coordinator,
+        "protect": hub.protect_coordinator,
     }
     coordinator = mapping.get(key)
     if coordinator is None:
@@ -658,8 +661,176 @@ ISP_METRICS_SENSORS: tuple[UniFiSensorDescription, ...] = (
 
 
 # ---------------------------------------------------------------------------
+# Cloud multi-site overview sensors (coordinator_key="cloud")
+# ---------------------------------------------------------------------------
+
+CLOUD_MULTI_SITE_SENSORS: tuple[UniFiSensorDescription, ...] = (
+    UniFiSensorDescription(
+        key="cloud_site_count",
+        name="Cloud sites",
+        icon="mdi:web",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda hub: (
+            len(hub.cloud_coordinator.hosts)
+            if hub.cloud_coordinator and hub.cloud_coordinator.hosts
+            else None
+        ),
+        coordinator_key="cloud",
+    ),
+    UniFiSensorDescription(
+        key="cloud_host_count",
+        name="Cloud hosts",
+        icon="mdi:server-network",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda hub: (
+            len([h for h in hub.cloud_coordinator.hosts if getattr(h, "reported_state", None)])
+            if hub.cloud_coordinator and hub.cloud_coordinator.hosts
+            else None
+        ),
+        coordinator_key="cloud",
+    ),
+    UniFiSensorDescription(
+        key="cloud_sdwan_configs",
+        name="SD-WAN configurations",
+        icon="mdi:wan",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda hub: (
+            len(hub.cloud_coordinator.sdwan_configs)
+            if hub.cloud_coordinator and hub.cloud_coordinator.sdwan_configs
+            else None
+        ),
+        coordinator_key="cloud",
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# WiFi experience score sensor (coordinator_key="device")
+# ---------------------------------------------------------------------------
+
+WIFI_EXPERIENCE_SENSOR = UniFiSensorDescription(
+    key="wifi_experience",
+    name="WiFi experience score",
+    native_unit_of_measurement=PERCENTAGE,
+    state_class=SensorStateClass.MEASUREMENT,
+    icon="mdi:wifi-check",
+    value_fn=lambda hub: _wifi_experience(hub),
+    coordinator_key="device",
+)
+
+
+# ---------------------------------------------------------------------------
+# Traffic report sensors (coordinator_key="traffic")
+# ---------------------------------------------------------------------------
+
+TRAFFIC_SENSORS: tuple[UniFiSensorDescription, ...] = (
+    UniFiSensorDescription(
+        key="traffic_today_rx",
+        name="Traffic today download",
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        icon="mdi:download",
+        value_fn=lambda hub: _traffic_today(hub, "wan-rx_bytes"),
+        coordinator_key="traffic",
+    ),
+    UniFiSensorDescription(
+        key="traffic_today_tx",
+        name="Traffic today upload",
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        icon="mdi:upload",
+        value_fn=lambda hub: _traffic_today(hub, "wan-tx_bytes"),
+        coordinator_key="traffic",
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# Protect NVR sensors (coordinator_key="protect", conditional on Protect)
+# ---------------------------------------------------------------------------
+
+
+def _nvr_storage_pct(hub: UniFiHub):
+    """Return NVR storage usage as a percentage."""
+    if not hub.protect_coordinator or not hub.protect_coordinator.nvr:
+        return None
+    nvr = hub.protect_coordinator.nvr
+    if nvr.storage_total <= 0:
+        return None
+    return round(nvr.storage_used / nvr.storage_total * 100, 1)
+
+
+PROTECT_NVR_SENSORS: tuple[UniFiSensorDescription, ...] = (
+    UniFiSensorDescription(
+        key="nvr_storage_used_pct",
+        name="NVR storage used",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:harddisk",
+        value_fn=lambda hub: _nvr_storage_pct(hub),
+        coordinator_key="protect",
+    ),
+    UniFiSensorDescription(
+        key="nvr_camera_count",
+        name="NVR cameras",
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:cctv",
+        value_fn=lambda hub: (
+            len(hub.protect_coordinator.cameras)
+            if hub.protect_coordinator
+            else None
+        ),
+        coordinator_key="protect",
+    ),
+    UniFiSensorDescription(
+        key="nvr_recording_retention",
+        name="NVR recording retention",
+        native_unit_of_measurement="h",
+        icon="mdi:clock-outline",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda hub: (
+            hub.protect_coordinator.nvr.recording_retention
+            if hub.protect_coordinator and hub.protect_coordinator.nvr
+            else None
+        ),
+        coordinator_key="protect",
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
 # Value-extraction helpers
 # ---------------------------------------------------------------------------
+
+def _wifi_experience(hub: UniFiHub):
+    """Calculate average satisfaction across all APs."""
+    if hub.device_coordinator is None:
+        return None
+    scores = []
+    for device in hub.device_coordinator.devices.values():
+        if device.type != "uap":
+            continue
+        for radio in device.radios:
+            if radio.satisfaction > 0 and radio.num_sta > 0:
+                scores.append(radio.satisfaction)
+    if not scores:
+        return None
+    return round(sum(scores) / len(scores), 1)
+
+
+def _traffic_today(hub: UniFiHub, field: str):
+    """Sum hourly traffic entries for today and convert bytes to GB."""
+    if hub.traffic_coordinator is None:
+        return None
+    hourly = hub.traffic_coordinator.hourly
+    if not hourly:
+        return None
+    total = sum(entry.get(field, 0) for entry in hourly)
+    return round(total / (1024**3), 2) if total > 0 else 0
 
 def _isp_metric(hub: UniFiHub, attr: str):
     """Read *attr* from the most recent ISP metrics entry."""
@@ -1272,6 +1443,42 @@ def _make_switch_port_sensors(
 
 
 # ---------------------------------------------------------------------------
+# Per-switch PoE power budget sensor factory
+# ---------------------------------------------------------------------------
+
+def _make_switch_poe_budget_sensors(
+    mac: str, device_name: str
+) -> list[UniFiSensorDescription]:
+    """Create a PoE power budget sensor for a switch."""
+    safe_mac = mac.replace(":", "_")
+    return [
+        UniFiSensorDescription(
+            key=f"switch_{safe_mac}_poe_power_used",
+            name=f"{device_name} PoE power used",
+            native_unit_of_measurement="W",
+            device_class=SensorDeviceClass.POWER,
+            state_class=SensorStateClass.MEASUREMENT,
+            icon="mdi:flash",
+            value_fn=lambda hub, _m=mac: _switch_poe_total(hub, _m),
+            coordinator_key="device",
+        ),
+    ]
+
+
+def _switch_poe_total(hub: UniFiHub, mac: str):
+    """Return total PoE power used across all ports on a switch."""
+    if hub.device_coordinator is None:
+        return None
+    device = hub.device_coordinator.devices.get(mac)
+    if device is None:
+        return None
+    total = sum(
+        p.poe_power for p in device.ports if p.poe_enable and p.poe_power > 0
+    )
+    return round(total, 1) if total > 0 else 0
+
+
+# ---------------------------------------------------------------------------
 # Sensor entity
 # ---------------------------------------------------------------------------
 
@@ -1474,6 +1681,21 @@ async def async_setup_entry(
                 )
             )
 
+    # ── Cloud multi-site overview sensors ─────────────────────────────
+    if hub.cloud_coordinator is not None and hub.get_option(CONF_ENABLE_CLOUD, True):
+        for desc in CLOUD_MULTI_SITE_SENSORS:
+            coordinator = _get_coordinator(hub, desc.coordinator_key)
+            entities.append(
+                UniFiSensorEntity(
+                    coordinator=coordinator,
+                    description=desc,
+                    hub=hub,
+                    mac=hub.gateway_mac,
+                    device_name=gw_name,
+                    device_model=gw_model,
+                )
+            )
+
     # ── VRRP state sensor (conditional on gateway having VRRP) ────────
     if gateway.vrrp_enabled or gateway.vrrp_state:
         coordinator = _get_coordinator(hub, VRRP_SENSOR.coordinator_key)
@@ -1550,6 +1772,113 @@ async def async_setup_entry(
                             device_model=dev_model,
                         )
                     )
+
+    # ── Per-switch PoE budget sensors ─────────────────────────────────
+    if hub.get_option(CONF_ENABLE_DEVICE_SENSORS, True):
+        for mac, device in hub.device_coordinator.devices.items():
+            if device.type != "usw":
+                continue
+            # Only create if the switch has any PoE-capable ports
+            has_poe = any(p.poe_enable or p.poe_mode for p in device.ports)
+            if not has_poe:
+                continue
+            dev_name = device.name or f"Switch {mac}"
+            dev_model = device.model_name or device.model or "UniFi Switch"
+            for desc in _make_switch_poe_budget_sensors(mac, dev_name):
+                entities.append(
+                    UniFiSensorEntity(
+                        coordinator=hub.device_coordinator,
+                        description=desc,
+                        hub=hub,
+                        mac=mac,
+                        device_name=dev_name,
+                        device_model=dev_model,
+                    )
+                )
+
+    # ── WiFi experience score sensor ──────────────────────────────────
+    if hub.device_coordinator is not None:
+        entities.append(
+            UniFiSensorEntity(
+                coordinator=hub.device_coordinator,
+                description=WIFI_EXPERIENCE_SENSOR,
+                hub=hub,
+                mac=hub.gateway_mac,
+                device_name=gw_name,
+                device_model=gw_model,
+            )
+        )
+
+    # ── Traffic report sensors ────────────────────────────────────────
+    if hub.traffic_coordinator is not None:
+        for desc in TRAFFIC_SENSORS:
+            coordinator = _get_coordinator(hub, desc.coordinator_key)
+            entities.append(
+                UniFiSensorEntity(
+                    coordinator=coordinator,
+                    description=desc,
+                    hub=hub,
+                    mac=hub.gateway_mac,
+                    device_name=gw_name,
+                    device_model=gw_model,
+                )
+            )
+
+    # ── Protect NVR sensors ────────────────────────────────────────────
+    if (
+        hub.get_option(CONF_ENABLE_PROTECT, False)
+        and hub.protect_coordinator is not None
+        and hub.protect_coordinator.available
+    ):
+        for desc in PROTECT_NVR_SENSORS:
+            coordinator = _get_coordinator(hub, desc.coordinator_key)
+            entities.append(
+                UniFiSensorEntity(
+                    coordinator=coordinator,
+                    description=desc,
+                    hub=hub,
+                    mac=hub.gateway_mac,
+                    device_name=gw_name,
+                    device_model=gw_model,
+                )
+            )
+
+    # ── Network / VLAN diagnostic sensors ─────────────────────────────
+    if hub.legacy:
+        try:
+            raw_networks = await hub.legacy.get_network_conf()
+            for net in raw_networks:
+                net_name = net.get("name", "")
+                net_purpose = net.get("purpose", "")
+                vlan_id = net.get("vlan", "")
+                subnet = net.get("ip_subnet", "")
+                if net_name and net_purpose in (
+                    "corporate",
+                    "guest",
+                    "vlan-only",
+                ):
+                    desc = UniFiSensorDescription(
+                        key=f"network_{net_name.lower().replace(' ', '_')}",
+                        name=f"Network {net_name}",
+                        entity_category=EntityCategory.DIAGNOSTIC,
+                        icon="mdi:lan",
+                        value_fn=lambda hub, _n=net_name, _v=vlan_id, _s=subnet: (
+                            f"VLAN {_v} ({_s})" if _v else _s
+                        ),
+                        coordinator_key="device",
+                    )
+                    entities.append(
+                        UniFiSensorEntity(
+                            coordinator=hub.device_coordinator,
+                            description=desc,
+                            hub=hub,
+                            mac=hub.gateway_mac,
+                            device_name=gw_name,
+                            device_model=gw_model,
+                        )
+                    )
+        except Exception:
+            _LOGGER.debug("Could not fetch network config", exc_info=True)
 
     _LOGGER.debug(
         "Setting up %d sensor entities for gateway %s", len(entities), gw_name

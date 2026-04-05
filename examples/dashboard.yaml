@@ -1,0 +1,161 @@
+# Advanced UniFi Network HA — Example Dashboard
+#
+# Import this into your Home Assistant dashboard:
+# 1. Go to Settings > Dashboards > Add Dashboard
+# 2. Edit the dashboard and switch to YAML mode
+# 3. Paste this content
+#
+# Replace entity IDs with your actual entity IDs.
+# Entity IDs follow the pattern: sensor.{gateway_name}_{sensor_key}
+
+title: UniFi Network
+views:
+  - title: Overview
+    path: unifi-overview
+    icon: mdi:router-wireless
+    cards:
+      # Gateway Health
+      - type: entities
+        title: Gateway
+        show_header_toggle: false
+        entities:
+          - entity: sensor.gateway_cpu_usage
+            name: CPU
+          - entity: sensor.gateway_memory_usage
+            name: Memory
+          - entity: sensor.gateway_uptime
+            name: Uptime
+          - entity: sensor.gateway_connected_clients
+            name: Clients
+          - entity: sensor.gateway_firmware_version
+            name: Firmware
+          - entity: binary_sensor.gateway_internet_connected
+            name: Internet
+
+      # WAN Status
+      - type: glance
+        title: WAN Status
+        show_state: true
+        entities:
+          - entity: sensor.gateway_active_wan
+            name: Active WAN
+          - entity: sensor.gateway_wan1_download_rate
+            name: Download
+          - entity: sensor.gateway_wan1_upload_rate
+            name: Upload
+          - entity: sensor.gateway_wan1_latency
+            name: Latency
+          - entity: binary_sensor.gateway_wan1_link_up
+            name: WAN1 Link
+
+      # Speedtest
+      - type: entities
+        title: Speed Test
+        entities:
+          - entity: sensor.gateway_speedtest_download
+            name: Download
+          - entity: sensor.gateway_speedtest_upload
+            name: Upload
+          - entity: sensor.gateway_speedtest_ping
+            name: Ping
+          - entity: sensor.gateway_speedtest_last_run
+            name: Last Run
+          - entity: button.gateway_run_speedtest
+            name: Run Test
+
+      # Network Health
+      - type: glance
+        title: Network
+        entities:
+          - entity: sensor.gateway_wlan_clients
+            name: WiFi Clients
+          - entity: sensor.gateway_lan_clients
+            name: LAN Clients
+          - entity: sensor.gateway_ap_count
+            name: APs
+          - entity: sensor.gateway_switch_count
+            name: Switches
+          - entity: sensor.gateway_wifi_experience
+            name: WiFi Score
+
+      # Traffic Today
+      - type: entities
+        title: Traffic Today
+        entities:
+          - entity: sensor.gateway_traffic_today_rx
+            name: Downloaded
+          - entity: sensor.gateway_traffic_today_tx
+            name: Uploaded
+
+      # WAN Throughput History
+      - type: history-graph
+        title: WAN Throughput (24h)
+        hours_to_show: 24
+        entities:
+          - entity: sensor.gateway_wan1_download_rate
+            name: Download
+          - entity: sensor.gateway_wan1_upload_rate
+            name: Upload
+
+  - title: Devices
+    path: unifi-devices
+    icon: mdi:devices
+    cards:
+      # Device List
+      - type: entities
+        title: Network Devices
+        entities:
+          - type: section
+            label: Access Points
+          # Add your AP entities here, e.g.:
+          # - entity: sensor.office_ap_radio_ng_clients
+          #   name: Office AP (2.4GHz clients)
+          - type: section
+            label: Switches
+          # Add your switch entities here, e.g.:
+          # - entity: sensor.main_switch_poe_power_used
+          #   name: Main Switch PoE
+
+      # Firmware Updates
+      - type: entities
+        title: Firmware Updates
+        state_color: true
+        entities: []
+        # Add update.{device_name}_firmware entities here
+
+  - title: Clients
+    path: unifi-clients
+    icon: mdi:account-multiple
+    cards:
+      - type: entities
+        title: Connected Clients
+        state_color: true
+        entities: []
+        # Add your device_tracker entities here
+        # They will show home/not_home state
+
+  - title: Security
+    path: unifi-security
+    icon: mdi:shield-check
+    cards:
+      # Alarms
+      - type: entities
+        title: Security Alerts
+        entities:
+          - entity: sensor.gateway_alarm_count
+            name: Active Alarms
+          - entity: sensor.gateway_latest_alarm
+            name: Latest Alert
+          - entity: button.gateway_archive_alarms
+            name: Archive All
+
+      # VPN
+      - type: entities
+        title: VPN
+        entities:
+          - entity: sensor.gateway_vpn_remote_users_active
+            name: Remote Users
+          - entity: sensor.gateway_vpn_s2s_active
+            name: Site-to-Site Tunnels
+          - entity: binary_sensor.gateway_vpn_active
+            name: VPN Active

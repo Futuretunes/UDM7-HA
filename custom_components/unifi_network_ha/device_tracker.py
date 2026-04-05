@@ -181,6 +181,14 @@ class UniFiClientTracker(CoordinatorEntity[ClientCoordinator], ScannerEntity):
         if client.blocked:
             attrs["blocked"] = True
 
+        # Device fingerprinting
+        if client.dev_cat:
+            attrs["device_category"] = client.dev_cat
+        if client.dev_family:
+            attrs["device_family"] = client.dev_family
+        if client.dev_vendor:
+            attrs["device_vendor"] = client.dev_vendor
+
         return attrs
 
     # -- Device registry ---------------------------------------------------

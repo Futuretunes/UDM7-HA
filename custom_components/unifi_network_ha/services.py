@@ -18,6 +18,9 @@ SERVICE_BLOCK_CLIENT = "block_client"
 SERVICE_UNBLOCK_CLIENT = "unblock_client"
 SERVICE_KICK_CLIENT = "kick_client"
 SERVICE_FORGET_CLIENT = "forget_client"
+SERVICE_CREATE_VOUCHER = "create_voucher"
+SERVICE_LIST_VOUCHERS = "list_vouchers"
+SERVICE_REVOKE_VOUCHER = "revoke_voucher"
 
 SERVICE_RECONNECT_SCHEMA = vol.Schema({
     vol.Required("mac"): cv.string,
@@ -33,6 +36,20 @@ SERVICE_KICK_SCHEMA = vol.Schema({
 
 SERVICE_FORGET_SCHEMA = vol.Schema({
     vol.Required("mac"): cv.string,
+})
+
+SERVICE_CREATE_VOUCHER_SCHEMA = vol.Schema({
+    vol.Optional("count", default=1): vol.All(int, vol.Range(min=1, max=100)),
+    vol.Optional("quota", default=1): vol.All(int, vol.Range(min=0, max=100)),  # 0 = unlimited
+    vol.Optional("expire", default=1440): vol.All(int, vol.Range(min=1)),  # minutes
+    vol.Optional("up_bandwidth"): vol.All(int, vol.Range(min=1)),  # kbps
+    vol.Optional("down_bandwidth"): vol.All(int, vol.Range(min=1)),  # kbps
+    vol.Optional("byte_quota"): vol.All(int, vol.Range(min=1)),  # megabytes
+    vol.Optional("note", default=""): cv.string,
+})
+
+SERVICE_REVOKE_VOUCHER_SCHEMA = vol.Schema({
+    vol.Required("voucher_id"): cv.string,
 })
 
 
@@ -109,6 +126,67 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             await hub.legacy.forget_client([mac])
             _LOGGER.info("Forgot client %s", mac)
 
+    async def _create_voucher(call: ServiceCall) -> None:
+        """Create guest portal vouchers."""
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            hub = entry.runtime_data
+            if hub.legacy is None:
+                continue
+            result = await hub.legacy.create_voucher(
+                count=call.data.get("count", 1),
+                quota=call.data.get("quota", 1),
+                expire=call.data.get("expire", 1440),
+                up_bandwidth=call.data.get("up_bandwidth"),
+                down_bandwidth=call.data.get("down_bandwidth"),
+                byte_quota=call.data.get("byte_quota"),
+                note=call.data.get("note", ""),
+            )
+            if result:
+                # Fire an event with the created voucher codes
+                codes = [v.get("code", "") for v in result if v.get("code")]
+                hass.bus.async_fire(f"{DOMAIN}_voucher_created", {
+                    "codes": codes,
+                    "count": len(codes),
+                    "expire_minutes": call.data.get("expire", 1440),
+                })
+                _LOGGER.info("Created %d voucher(s)", len(codes))
+            break  # only use first config entry
+
+    async def _list_vouchers(call: ServiceCall) -> None:
+        """List active vouchers -- fires an event with the voucher data."""
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            hub = entry.runtime_data
+            if hub.legacy is None:
+                continue
+            vouchers = await hub.legacy.get_vouchers()
+            hass.bus.async_fire(f"{DOMAIN}_voucher_list", {
+                "vouchers": [
+                    {
+                        "code": v.get("code", ""),
+                        "note": v.get("note", ""),
+                        "quota": v.get("quota", 0),
+                        "used": v.get("used", 0),
+                        "duration": v.get("duration", 0),
+                        "status": v.get("status", ""),
+                        "create_time": v.get("create_time", 0),
+                    }
+                    for v in vouchers
+                ],
+                "count": len(vouchers),
+            })
+            break  # only use first config entry
+
+    async def _revoke_voucher(call: ServiceCall) -> None:
+        """Revoke a guest voucher."""
+        voucher_id = call.data["voucher_id"]
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            hub = entry.runtime_data
+            if hub.legacy is None:
+                continue
+            await hub.legacy.revoke_voucher(voucher_id)
+            _LOGGER.info("Revoked voucher %s", voucher_id)
+            break  # only use first config entry
+
     hass.services.async_register(
         DOMAIN, SERVICE_RECONNECT_CLIENT, _reconnect_client,
         schema=SERVICE_RECONNECT_SCHEMA,
@@ -132,6 +210,17 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         DOMAIN, SERVICE_FORGET_CLIENT, _forget_client,
         schema=SERVICE_FORGET_SCHEMA,
     )
+    hass.services.async_register(
+        DOMAIN, SERVICE_CREATE_VOUCHER, _create_voucher,
+        schema=SERVICE_CREATE_VOUCHER_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_LIST_VOUCHERS, _list_vouchers,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_REVOKE_VOUCHER, _revoke_voucher,
+        schema=SERVICE_REVOKE_VOUCHER_SCHEMA,
+    )
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
@@ -142,3 +231,6 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_UNBLOCK_CLIENT)
     hass.services.async_remove(DOMAIN, SERVICE_KICK_CLIENT)
     hass.services.async_remove(DOMAIN, SERVICE_FORGET_CLIENT)
+    hass.services.async_remove(DOMAIN, SERVICE_CREATE_VOUCHER)
+    hass.services.async_remove(DOMAIN, SERVICE_LIST_VOUCHERS)
+    hass.services.async_remove(DOMAIN, SERVICE_REVOKE_VOUCHER)

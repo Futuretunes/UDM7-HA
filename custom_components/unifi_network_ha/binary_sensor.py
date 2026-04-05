@@ -20,7 +20,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_ENABLE_DEVICE_SENSORS, CONF_ENABLE_VPN
+from .const import CONF_ENABLE_DEVICE_SENSORS, CONF_ENABLE_PROTECT, CONF_ENABLE_VPN
 from .coordinators.base import UniFiDataUpdateCoordinator
 from .entity import UniFiEntity
 from .hub import UniFiHub
@@ -63,6 +63,7 @@ def _get_coordinator(hub: UniFiHub, key: str) -> UniFiDataUpdateCoordinator:
         "device": hub.device_coordinator,
         "health": hub.health_coordinator,
         "wan_rate": hub.wan_rate_coordinator,
+        "protect": hub.protect_coordinator,
     }
     coordinator = mapping.get(key)
     if coordinator is None:
@@ -290,6 +291,18 @@ def _make_switch_port_binary_sensors(
 
 
 # ---------------------------------------------------------------------------
+# Protect camera helpers
+# ---------------------------------------------------------------------------
+
+def _camera_connected(hub: UniFiHub, cam_id: str) -> bool | None:
+    """Return whether the camera with *cam_id* is connected."""
+    if not hub.protect_coordinator:
+        return None
+    cam = hub.protect_coordinator.cameras.get(cam_id)
+    return cam.is_connected if cam else None
+
+
+# ---------------------------------------------------------------------------
 # Binary sensor entity
 # ---------------------------------------------------------------------------
 
@@ -425,6 +438,31 @@ async def async_setup_entry(
                             device_model=dev_model,
                         )
                     )
+
+    # -- Protect camera binary sensors (connectivity) ----------------------
+    if (
+        hub.get_option(CONF_ENABLE_PROTECT, False)
+        and hub.protect_coordinator is not None
+        and hub.protect_coordinator.available
+    ):
+        for cam_id, camera in hub.protect_coordinator.cameras.items():
+            desc = UniFiBinarySensorDescription(
+                key=f"camera_{cam_id}_connected",
+                name=f"{camera.name} connected",
+                device_class=BinarySensorDeviceClass.CONNECTIVITY,
+                value_fn=lambda hub, _id=cam_id: _camera_connected(hub, _id),
+                coordinator_key="protect",
+            )
+            entities.append(
+                UniFiBinarySensorEntity(
+                    coordinator=hub.protect_coordinator,
+                    description=desc,
+                    hub=hub,
+                    mac=hub.gateway_mac,
+                    device_name=gw_name,
+                    device_model=gw_model,
+                )
+            )
 
     _LOGGER.debug(
         "Setting up %d binary sensor entities for gateway %s",

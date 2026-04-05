@@ -65,6 +65,7 @@
           "enable_alarms": "Alarm / alert monitoring",
           "enable_dpi": "Deep Packet Inspection statistics",
           "enable_vpn": "VPN status monitoring",
+          "enable_protect": "UniFi Protect (NVR / cameras)",
           "enable_per_client_sensors": "Per-client sensor entities",
           "enable_client_controls": "Client block/unblock controls",
           "enable_device_controls": "Device controls (PoE, port, WLAN, firewall)"
@@ -76,6 +77,7 @@
           "enable_alarms": "IDS/IPS alerts and alarm monitoring.",
           "enable_dpi": "Deep packet inspection traffic analysis. Polls every 5 min.",
           "enable_vpn": "VPN tunnel monitoring.",
+          "enable_protect": "NVR storage, camera count, recording retention, and per-camera connectivity. Only works on gateways with Protect (UDR7, UDM-Pro, UDM-SE, etc.).",
           "enable_per_client_sensors": "Creates individual sensor entities for each network client's signal strength, bandwidth, and satisfaction. On networks with many clients this can create hundreds of entities.",
           "enable_client_controls": "Enables block/unblock switches and kick/forget services for network clients.",
           "enable_device_controls": "Enables PoE port toggles, port enable/disable, WLAN switches, firewall policy switches, traffic rule switches, and port forwarding switches."
@@ -115,6 +117,7 @@
           "enable_alarms": "Alarm / alert monitoring",
           "enable_dpi": "Deep Packet Inspection statistics",
           "enable_vpn": "VPN status monitoring",
+          "enable_protect": "UniFi Protect (NVR / cameras)",
           "enable_per_client_sensors": "Per-client sensor entities",
           "enable_client_controls": "Client block/unblock controls",
           "enable_device_controls": "Device controls (PoE, port, WLAN, firewall)",
@@ -127,6 +130,7 @@
           "enable_alarms": "IDS/IPS alerts and alarm monitoring.",
           "enable_dpi": "Deep packet inspection traffic analysis. Polls every 5 min.",
           "enable_vpn": "VPN tunnel monitoring.",
+          "enable_protect": "NVR storage, camera count, recording retention, and per-camera connectivity. Only works on gateways with Protect (UDR7, UDM-Pro, UDM-SE, etc.).",
           "enable_per_client_sensors": "Creates individual sensor entities for each network client's signal strength, bandwidth, and satisfaction. On networks with many clients this can create hundreds of entities.",
           "enable_client_controls": "Enables block/unblock switches and kick/forget services for network clients.",
           "enable_device_controls": "Enables PoE port toggles, port enable/disable, WLAN switches, firewall policy switches, traffic rule switches, and port forwarding switches.",

@@ -27,6 +27,7 @@ CONF_UPDATE_INTERVAL_WAN_RATE: Final = "update_interval_wan_rate"
 CONF_UPDATE_INTERVAL_ALARMS: Final = "update_interval_alarms"
 CONF_UPDATE_INTERVAL_DPI: Final = "update_interval_dpi"
 CONF_UPDATE_INTERVAL_CLOUD: Final = "update_interval_cloud"
+CONF_UPDATE_INTERVAL_TRAFFIC: Final = "update_interval_traffic"
 
 CONF_TRACK_CLIENTS: Final = "track_clients"
 CONF_TRACK_WIRED: Final = "track_wired"
@@ -39,6 +40,7 @@ CONF_ENABLE_DPI: Final = "enable_dpi"
 CONF_ENABLE_ALARMS: Final = "enable_alarms"
 CONF_ENABLE_VPN: Final = "enable_vpn"
 CONF_ENABLE_CLOUD: Final = "enable_cloud"
+CONF_ENABLE_PROTECT: Final = "enable_protect"
 
 # Feature group toggles
 CONF_ENABLE_DEVICE_SENSORS: Final = "enable_device_sensors"
@@ -58,6 +60,7 @@ DEFAULT_UPDATE_INTERVAL_WAN_RATE: Final = 5
 DEFAULT_UPDATE_INTERVAL_ALARMS: Final = 120
 DEFAULT_UPDATE_INTERVAL_DPI: Final = 300
 DEFAULT_UPDATE_INTERVAL_CLOUD: Final = 900
+DEFAULT_UPDATE_INTERVAL_TRAFFIC: Final = 300     # 5 minutes
 
 DEFAULT_CLIENT_HEARTBEAT: Final = 300  # 5 minutes
 DEFAULT_TRACK_CLIENTS: Final = True

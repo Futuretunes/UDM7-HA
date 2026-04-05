@@ -1,0 +1,43 @@
+blueprint:
+  name: "UniFi Scheduled Device Restart"
+  description: "Restart a UniFi device on a regular schedule (e.g., weekly AP restart)."
+  domain: automation
+  author: "Advanced UniFi Network HA"
+  input:
+    restart_button:
+      name: Restart Button
+      description: "The device restart button entity."
+      selector:
+        entity:
+          filter:
+            - integration: unifi_network_ha
+              domain: button
+    schedule_day:
+      name: Day of week
+      description: "Day to restart (0=Monday, 6=Sunday)."
+      default: 6
+      selector:
+        number:
+          min: 0
+          max: 6
+    schedule_time:
+      name: Time
+      description: "Time of day to restart."
+      default: "04:00:00"
+      selector:
+        time:
+
+trigger:
+  - platform: time
+    at: !input schedule_time
+
+condition:
+  - condition: template
+    value_template: "{{ now().weekday() == (day | int) }}"
+    variables:
+      day: !input schedule_day
+
+action:
+  - service: button.press
+    target:
+      entity_id: !input restart_button

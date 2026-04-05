@@ -1,0 +1,48 @@
+blueprint:
+  name: "UniFi Scheduled Speedtest"
+  description: "Run a WAN speedtest on a regular schedule and optionally notify with results."
+  domain: automation
+  author: "Advanced UniFi Network HA"
+  input:
+    speedtest_button:
+      name: Speedtest Button
+      description: "The Run Speedtest button entity."
+      selector:
+        entity:
+          filter:
+            - integration: unifi_network_ha
+              domain: button
+    schedule_time:
+      name: Time to run
+      description: "Time of day to run the speedtest."
+      default: "03:00:00"
+      selector:
+        time:
+    notify_service:
+      name: Notification Service (optional)
+      description: "Leave empty to skip notification."
+      default: ""
+      selector:
+        text:
+
+trigger:
+  - platform: time
+    at: !input schedule_time
+
+action:
+  - service: button.press
+    target:
+      entity_id: !input speedtest_button
+  - delay:
+      seconds: 60
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ notify_svc != '' }}"
+        sequence:
+          - service: "{{ notify_svc }}"
+            data:
+              title: "Speedtest Results"
+              message: "Speedtest complete. Check your dashboard for results."
+    variables:
+      notify_svc: !input notify_service

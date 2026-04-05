@@ -223,3 +223,173 @@ def test_service_constants_block():
     """Block/unblock constants are also correctly defined."""
     assert SERVICE_BLOCK_CLIENT == "block_client"
     assert SERVICE_UNBLOCK_CLIENT == "unblock_client"
+
+
+# ===================================================================
+# v0.3.0 feature tests
+# ===================================================================
+
+class TestTrafficReport:
+    """Tests for traffic report data parsing."""
+
+    def test_traffic_today_calculation(self):
+        """Traffic today sums hourly wan-rx_bytes entries."""
+        hourly = [
+            {"wan-rx_bytes": 1073741824, "wan-tx_bytes": 536870912},  # 1 GB / 0.5 GB
+            {"wan-rx_bytes": 2147483648, "wan-tx_bytes": 1073741824},  # 2 GB / 1 GB
+        ]
+        total_rx = sum(e.get("wan-rx_bytes", 0) for e in hourly)
+        total_tx = sum(e.get("wan-tx_bytes", 0) for e in hourly)
+        # Convert to GB
+        rx_gb = round(total_rx / (1024**3), 2)
+        tx_gb = round(total_tx / (1024**3), 2)
+        assert rx_gb == 3.0
+        assert tx_gb == 1.5
+
+    def test_traffic_today_empty(self):
+        """Empty hourly data returns 0."""
+        hourly = []
+        total = sum(e.get("wan-rx_bytes", 0) for e in hourly)
+        assert total == 0
+
+
+class TestPoeBudget:
+    """Tests for PoE power budget calculation."""
+
+    def test_poe_total_power(self):
+        from custom_components.unifi_network_ha.api.models import Device
+        device = Device.from_dict({
+            "mac": "aa:bb:cc:dd:ee:ff",
+            "type": "usw",
+            "port_table": [
+                {"port_idx": 1, "poe_enable": True, "poe_power": "3.5"},
+                {"port_idx": 2, "poe_enable": True, "poe_power": "7.2"},
+                {"port_idx": 3, "poe_enable": False, "poe_power": "0"},
+                {"port_idx": 4, "poe_enable": True, "poe_power": "0"},
+            ],
+        })
+        total = sum(p.poe_power for p in device.ports if p.poe_enable and p.poe_power > 0)
+        assert round(total, 1) == 10.7
+
+    def test_poe_no_poe_ports(self):
+        from custom_components.unifi_network_ha.api.models import Device
+        device = Device.from_dict({
+            "mac": "aa:bb:cc:dd:ee:ff",
+            "type": "usw",
+            "port_table": [
+                {"port_idx": 1, "poe_enable": False},
+                {"port_idx": 2, "poe_enable": False},
+            ],
+        })
+        total = sum(p.poe_power for p in device.ports if p.poe_enable and p.poe_power > 0)
+        assert total == 0
+
+
+class TestWifiExperience:
+    """Tests for WiFi experience score calculation."""
+
+    def test_wifi_experience_average(self):
+        from custom_components.unifi_network_ha.api.models import Device
+        devices = [
+            Device.from_dict({
+                "mac": "aa:bb:cc:dd:ee:01", "type": "uap",
+                "radio_table_stats": [
+                    {"name": "ra0", "radio": "ng", "satisfaction": 90, "num_sta": 5},
+                    {"name": "rai0", "radio": "na", "satisfaction": 80, "num_sta": 3},
+                ],
+            }),
+            Device.from_dict({
+                "mac": "aa:bb:cc:dd:ee:02", "type": "uap",
+                "radio_table_stats": [
+                    {"name": "ra0", "radio": "ng", "satisfaction": 70, "num_sta": 2},
+                ],
+            }),
+        ]
+        scores = []
+        for d in devices:
+            for r in d.radios:
+                if r.satisfaction > 0 and r.num_sta > 0:
+                    scores.append(r.satisfaction)
+        avg = round(sum(scores) / len(scores), 1)
+        assert avg == 80.0  # (90 + 80 + 70) / 3
+
+    def test_wifi_experience_no_aps(self):
+        """No APs means no score."""
+        scores = []
+        assert len(scores) == 0
+
+
+class TestProtectModels:
+    """Tests for Protect data models."""
+
+    def test_protect_camera_from_dict(self):
+        from custom_components.unifi_network_ha.coordinators.protect import ProtectCamera
+        cam = ProtectCamera.from_dict({
+            "id": "cam1",
+            "name": "Front Door",
+            "mac": "AA:BB:CC:DD:EE:01",
+            "type": "UVC-G4-Pro",
+            "state": "CONNECTED",
+            "isRecording": True,
+            "lastMotion": 1700000000,
+            "firmwareVersion": "4.63.15",
+        })
+        assert cam.id == "cam1"
+        assert cam.name == "Front Door"
+        assert cam.is_connected is True
+        assert cam.is_recording is True
+        assert cam.firmware == "4.63.15"
+
+    def test_protect_camera_disconnected(self):
+        from custom_components.unifi_network_ha.coordinators.protect import ProtectCamera
+        cam = ProtectCamera.from_dict({"id": "cam2", "name": "Back", "state": "DISCONNECTED"})
+        assert cam.is_connected is False
+
+    def test_protect_nvr_from_dict(self):
+        from custom_components.unifi_network_ha.coordinators.protect import ProtectNvr
+        nvr = ProtectNvr.from_dict({
+            "name": "NVR",
+            "version": "4.0.6",
+            "uptime": 86400,
+            "storageInfo": {"totalSize": 128000000000, "totalSpaceAvailable": 96000000000},
+            "recordingRetentionDurationMs": 604800000,  # 7 days
+            "systemInfo": {
+                "cpu": {"averageLoad": 15.5},
+                "memory": {"total": 4000000000, "available": 2000000000},
+            },
+        })
+        assert nvr.name == "NVR"
+        assert nvr.version == "4.0.6"
+        assert nvr.storage_used == 32000000000  # 128B - 96B
+        assert nvr.storage_total == 128000000000
+        assert nvr.recording_retention == 168  # 604800000 / 3600000
+        assert nvr.cpu_usage == 15.5
+
+    def test_protect_nvr_empty(self):
+        from custom_components.unifi_network_ha.coordinators.protect import ProtectNvr
+        nvr = ProtectNvr.from_dict({})
+        assert nvr.name == ""
+        assert nvr.storage_total == 0
+        assert nvr.recording_retention == 0
+
+
+class TestVoucherServiceConstants:
+    """Tests for voucher service constants."""
+
+    def test_voucher_service_names(self):
+        from custom_components.unifi_network_ha.services import (
+            SERVICE_CREATE_VOUCHER,
+            SERVICE_LIST_VOUCHERS,
+            SERVICE_REVOKE_VOUCHER,
+        )
+        assert SERVICE_CREATE_VOUCHER == "create_voucher"
+        assert SERVICE_LIST_VOUCHERS == "list_vouchers"
+        assert SERVICE_REVOKE_VOUCHER == "revoke_voucher"
+
+
+class TestProtectFeatureToggle:
+    """Tests for Protect feature toggle constant."""
+
+    def test_protect_toggle_exists(self):
+        from custom_components.unifi_network_ha.const import CONF_ENABLE_PROTECT
+        assert CONF_ENABLE_PROTECT == "enable_protect"
