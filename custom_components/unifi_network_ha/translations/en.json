@@ -42,7 +42,7 @@
           "cloud_api_key": "Cloud API key"
         },
         "data_description": {
-          "cloud_api_key": "API key from [developers.ui.com](https://developers.ui.com). Grants read-only access to cloud-connected site metadata."
+          "cloud_api_key": "API key from unifi.ui.com (Site Manager > API). Grants read-only access to cloud-connected site metadata."
         }
       },
       "site": {
