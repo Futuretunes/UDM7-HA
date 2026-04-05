@@ -141,6 +141,23 @@ DISPLAY_NAMES: dict[str, str] = {
     "USG": "Security Gateway",
     "USG-Pro-4": "Security Gateway Pro",
     "USG-XG-8": "Security Gateway XG-8",
+    # ── API model codes (so raw codes also get display names) ────
+    "USF5P": "Switch Flex",
+    "USMINI": "Switch Flex Mini",
+    "USMINI2": "Switch Flex Mini",
+    "USM8P": "Switch Ultra",
+    "USL8LP": "Switch Lite 8 PoE",
+    "USL16LP": "Switch Lite 16 PoE",
+    "UAP6MP": "U6 Pro",
+    "UAL6": "U6 Lite",
+    "UALR6": "U6 LR",
+    "U6ENT": "U6 Enterprise",
+    "U7PRO": "U7 Pro",
+    "UGW3": "Security Gateway",
+    "UGW4": "Security Gateway Pro",
+    "UDRULT": "Cloud Gateway Ultra",
+    "UXGPRO": "Next-Gen Gateway Pro",
+    "UDMPROSE": "Dream Machine SE",
 }
 
 # ---------------------------------------------------------------------------
@@ -149,19 +166,55 @@ DISPLAY_NAMES: dict[str, str] = {
 # The API sometimes returns different variants of the same model string.
 
 MODEL_ALIASES: dict[str, str] = {
+    # ── Gateways (API model code → our canonical key) ────────────
+    "UDMPROSE": "UDMSE",               # API code for Dream Machine SE
     "UDM-Pro": "UDMPRO",
     "UDM-SE": "UDMSE",
     "UDM-Pro-Max": "UDMPROMAXHD",
     "UDM Pro": "UDMPRO",
     "UDM SE": "UDMSE",
     "UDM Pro Max": "UDMPROMAXHD",
+    "UDMENT": "UDMPROMAXHD",            # Enterprise Fortress Gateway
     "UCG Ultra": "UCG-Ultra",
+    "UDRULT": "UCG-Ultra",              # API code for Cloud Gateway Ultra
     "UXG Pro": "UXG-Pro",
+    "UXGPRO": "UXG-Pro",               # API code
+    "UXG": "UXG-Lite",                  # API code for Next-Gen Gateway Lite
+    "UXGB": "UXG-Enterprise",           # API code
     "UXG Enterprise": "UXG-Enterprise",
     "UXG Lite": "UXG-Lite",
-    "U7 Pro": "U7-Pro",
-    "U7 Pro Max": "U7-Pro-Max",
-    "U7 Outdoor": "U7-Outdoor",
+    "UGW3": "USG",                      # API code for Security Gateway
+    "UGW4": "USG-Pro-4",               # API code for Security Gateway Pro
+    # ── Access Points (API model code → our canonical key) ───────
+    "UAP6MP": "U6-Pro",                 # API code for U6 Pro
+    "UAL6": "U6-Lite",                  # API code for U6 Lite
+    "UALR6": "U6-LR",                  # API code for U6 LR
+    "UALR6v2": "U6-LR",
+    "UALR6v3": "U6-LR",
+    "U6ENT": "U6-Enterprise",           # API code
+    "U6IW": "U6-IW",                    # API code
+    "UAE6": "U6-Extender",              # API code
+    "U6EXT": "U6-Extender",
+    "UAM6": "U6-Mesh",                  # API code
+    "U6M": "U6-Mesh",
+    "UAIW6": "U6-IW",
+    "U7PRO": "U7-Pro",                  # API code
+    "U7ENT": "U7-Enterprise",
+    "G7LR": "U7-LR",
+    "U7P": "U7-Pro",
+    "U7PG2": "UAP-AC-Pro",             # Legacy AP (AC Pro Gen2)
+    "U7HD": "UAP-nanoHD",
+    "U7NHD": "UAP-nanoHD",
+    "U7LR": "UAP-AC-LR",
+    "U7LT": "UAP-AC-Lite",
+    "U7E": "UAP-AC-LR",
+    "U7Ev2": "UAP-AC-LR",
+    "UFLHD": "UAP-FlexHD",
+    "U7IW": "UAP-AC-IW",
+    "U7IWP": "UAP-AC-IW",
+    "U7MSH": "UAP-AC-M",
+    "U7MP": "UAP-AC-M-Pro",
+    # Pretty name variants
     "U6 Pro": "U6-Pro",
     "U6 LR": "U6-LR",
     "U6 Lite": "U6-Lite",
@@ -169,7 +222,34 @@ MODEL_ALIASES: dict[str, str] = {
     "U6 Mesh": "U6-Mesh",
     "U6 IW": "U6-IW",
     "U6 Extender": "U6-Extender",
-    # Switch variants the API may report
+    "U7 Pro": "U7-Pro",
+    "U7 Pro Max": "U7-Pro-Max",
+    "U7 Outdoor": "U7-Outdoor",
+    # ── Switches (API model code → our canonical key) ────────────
+    "USF5P": "USW-Flex",                # API code for Switch Flex
+    "USMINI": "USW-Flex-Mini",          # API code for Switch Flex Mini
+    "USMINI2": "USW-Flex-Mini",         # Gen2
+    "USM8P": "USW-Ultra",               # API code for Switch Ultra
+    "USM8P60": "USW-Ultra",
+    "USM8P210": "USW-Ultra",
+    "USL8LP": "USW-Lite-8-PoE",         # API code
+    "USL8LPB": "USW-Lite-8-PoE",
+    "USL16LP": "USW-Lite-16-PoE",       # API code
+    "USL16LPB": "USW-Lite-16-PoE",
+    "USL24P": "USW-24-PoE",             # API code
+    "USL24PB": "USW-24-PoE",
+    "USL48P": "USW-48-PoE",             # API code
+    "USL48PB": "USW-48-PoE",
+    "US24PRO": "USW-Pro-24-PoE",        # API code
+    "US48PRO": "USW-Pro-48-PoE",        # API code
+    "US624P": "USW-Enterprise-24-PoE",  # API code
+    "US648P": "USW-Enterprise-48-PoE",  # API code
+    "USL8A": "USW-Aggregation",         # API code
+    "USAGGPRO": "USW-Aggregation",
+    "USPM24P": "USW-Pro-Max-24-PoE",    # API code
+    "USPM48P": "USW-Pro-Max-48-PoE",    # API code
+    "USFXG": "USW-Flex-XG",
+    # Pretty name variants
     "USW Flex": "USW-Flex",
     "USW Flex Mini": "USW-Flex-Mini",
     "USWFLEX": "USW-Flex",
@@ -190,12 +270,17 @@ _STATIC_UI_FALLBACK = (
 
 def _resolve_model(model: str) -> str:
     """Resolve *model* through aliases and return the canonical key."""
-    if model in DEVICE_IMAGE_MAP or model in DISPLAY_NAMES:
+    # 1. Direct match in image map (highest priority)
+    if model in DEVICE_IMAGE_MAP:
         return model
+    # 2. Check aliases BEFORE display names (aliases point to image map keys)
     canonical = MODEL_ALIASES.get(model)
     if canonical:
         return canonical
-    # Case-insensitive fallback
+    # 3. Direct match in display names
+    if model in DISPLAY_NAMES:
+        return model
+    # 4. Case-insensitive fallback
     normalised = model.upper().replace(" ", "-")
     for key in DEVICE_IMAGE_MAP:
         if key.upper().replace(" ", "-") == normalised:
