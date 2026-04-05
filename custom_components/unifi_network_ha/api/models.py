@@ -977,18 +977,60 @@ class FirewallPolicy:
     name: str = ""
     enabled: bool = True
     action: str = ""
+    source_zone: str = ""
+    dest_zone: str = ""
+    source_network: str = ""
+    dest_network: str = ""
+    protocol: str = ""
+    index: int = 0
 
     raw: dict = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: dict) -> Self:
+        # Extract source/destination context for better naming
+        src_zone = str(data.get("source_zone", data.get("src_zone", "")))
+        dst_zone = str(data.get("destination_zone", data.get("dst_zone", "")))
+        src_net = str(data.get("source_network_id", data.get("source_network", "")))
+        dst_net = str(data.get("destination_network_id", data.get("destination_network", "")))
+        # Some policies use source/destination firewall groups
+        if not src_zone:
+            src_zone = str(data.get("source_firewall_group_ids", [""])[0]) if data.get("source_firewall_group_ids") else ""
+        if not dst_zone:
+            dst_zone = str(data.get("destination_firewall_group_ids", [""])[0]) if data.get("destination_firewall_group_ids") else ""
+        protocol = str(data.get("protocol", data.get("protocol_match_type", "")))
+        index = _safe_int(data.get("index", data.get("rule_index", 0)))
         return cls(
             id=str(data.get("_id", data.get("id", ""))),
-            name=str(data.get("name", "")),
+            name=str(data.get("name", data.get("description", ""))),
             enabled=_safe_bool(data.get("enabled", True)),
             action=str(data.get("action", "")),
+            source_zone=src_zone,
+            dest_zone=dst_zone,
+            source_network=src_net,
+            dest_network=dst_net,
+            protocol=protocol,
+            index=index,
             raw=data,
         )
+
+    @property
+    def display_name(self) -> str:
+        """Build a descriptive name for this policy."""
+        parts = []
+        if self.name:
+            parts.append(self.name)
+        # Add zone context if available
+        zones = []
+        if self.source_zone:
+            zones.append(self.source_zone)
+        if self.dest_zone:
+            zones.append(self.dest_zone)
+        if zones:
+            parts.append(f"({' → '.join(zones)})")
+        elif self.index:
+            parts.append(f"(#{self.index})")
+        return " ".join(parts) if parts else f"Policy {self.id[:8]}"
 
 
 # ---------------------------------------------------------------------------

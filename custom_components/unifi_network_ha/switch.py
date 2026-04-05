@@ -571,7 +571,7 @@ class UniFiFirewallPolicySwitch(CoordinatorEntity[UniFiDataUpdateCoordinator], S
         self._hub = hub
         self._policy_id = policy.id
         self._attr_unique_id = f"fw_policy_{policy.id}"
-        self._attr_name = f"Firewall Policy {policy.name}"
+        self._attr_name = f"Firewall {policy.display_name}"
 
     @property
     def device_info(self) -> DeviceInfo:
