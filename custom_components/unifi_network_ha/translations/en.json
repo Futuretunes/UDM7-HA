@@ -29,7 +29,7 @@
           "port": "HTTPS port of the controller (default: 443).",
           "site": "Site ID from the controller URL. Use `default` for the primary site.",
           "auth_method": "Choose **API key** (recommended for UniFi OS 9+) or **Username / Password** for older firmware.",
-          "api_key": "API key generated in the UniFi OS settings under **API Access**.",
+          "api_key": "Generate at your controller: **Settings > Control Plane > Integrations > Create API Key**. This is different from the cloud API key.",
           "username": "Local admin username for the controller.",
           "password": "Local admin password for the controller.",
           "verify_ssl": "Enable if the controller uses a trusted SSL certificate. Disable for self-signed certificates."

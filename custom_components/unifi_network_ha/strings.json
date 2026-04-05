@@ -21,12 +21,12 @@
       },
       "api_key": {
         "title": "API Key Authentication",
-        "description": "Enter the API key generated in the UniFi OS settings.",
+        "description": "Enter the **local** API key from your UniFi controller (not the cloud key from unifi.ui.com).",
         "data": {
-          "api_key": "API key"
+          "api_key": "Local API key"
         },
         "data_description": {
-          "api_key": "API key generated in the UniFi OS settings under **API Access**."
+          "api_key": "Generate at your controller: **Settings > Control Plane > Integrations > Create API Key**. This is different from the cloud API key."
         }
       },
       "credentials": {
