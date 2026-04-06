@@ -746,6 +746,27 @@ TRAFFIC_SENSORS: tuple[UniFiSensorDescription, ...] = (
         value_fn=lambda hub: _traffic_today(hub, "wan-tx_bytes"),
         coordinator_key="traffic",
     ),
+    # Monthly total traffic (uses daily data)
+    UniFiSensorDescription(
+        key="traffic_month_rx",
+        name="Traffic this month download",
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        icon="mdi:download",
+        value_fn=lambda hub: _traffic_period(hub, "daily", "wan-rx_bytes"),
+        coordinator_key="traffic",
+    ),
+    UniFiSensorDescription(
+        key="traffic_month_tx",
+        name="Traffic this month upload",
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        icon="mdi:upload",
+        value_fn=lambda hub: _traffic_period(hub, "daily", "wan-tx_bytes"),
+        coordinator_key="traffic",
+    ),
 )
 
 
@@ -831,6 +852,40 @@ def _traffic_today(hub: UniFiHub, field: str):
         return None
     total = sum(entry.get(field, 0) for entry in hourly)
     return round(total / (1024**3), 2) if total > 0 else 0
+
+
+def _traffic_period(hub: UniFiHub, period: str, field: str):
+    """Sum traffic data for a period (hourly or daily)."""
+    if hub.traffic_coordinator is None:
+        return None
+    data = hub.traffic_coordinator.hourly if period == "hourly" else hub.traffic_coordinator.daily
+    if not data:
+        return None
+    total = sum(entry.get(field, 0) for entry in data)
+    return round(total / (1024**3), 2) if total > 0 else 0
+
+
+def _calc_dhcp_pool_size(start: str, stop: str) -> int:
+    """Calculate the number of IPs in a DHCP range."""
+    try:
+        s = [int(x) for x in start.split(".")]
+        e = [int(x) for x in stop.split(".")]
+        start_num = (s[0] << 24) + (s[1] << 16) + (s[2] << 8) + s[3]
+        end_num = (e[0] << 24) + (e[1] << 16) + (e[2] << 8) + e[3]
+        return max(0, end_num - start_num + 1)
+    except (ValueError, IndexError):
+        return 0
+
+
+def _dhcp_usage(hub: UniFiHub, network_name: str, pool_size: int):
+    """Calculate DHCP pool usage percentage."""
+    if not hub.client_coordinator or pool_size <= 0:
+        return None
+    # Count clients on this network
+    count = sum(1 for c in hub.client_coordinator.clients.values()
+                if c.network == network_name)
+    return min(round(count / pool_size * 100, 1), 100.0)
+
 
 def _isp_metric(hub: UniFiHub, attr: str):
     """Read *attr* from the most recent ISP metrics entry."""
@@ -1877,6 +1932,33 @@ async def async_setup_entry(
                             device_model=gw_model,
                         )
                     )
+
+                # ── DHCP pool usage sensor ────────────────────────────
+                dhcp_enabled = net.get("dhcpd_enabled", False)
+                dhcp_start = net.get("dhcpd_start", "")
+                dhcp_stop = net.get("dhcpd_stop", "")
+
+                if net_name and dhcp_enabled and dhcp_start and dhcp_stop:
+                    pool_size = _calc_dhcp_pool_size(dhcp_start, dhcp_stop)
+                    if pool_size > 0:
+                        safe_name = net_name.lower().replace(" ", "_").replace("-", "_")
+                        dhcp_desc = UniFiSensorDescription(
+                            key=f"dhcp_{safe_name}_pool_usage",
+                            name=f"DHCP {net_name} pool usage",
+                            native_unit_of_measurement=PERCENTAGE,
+                            state_class=SensorStateClass.MEASUREMENT,
+                            icon="mdi:ip-network-outline",
+                            value_fn=lambda hub, _net=net_name, _pool=pool_size: _dhcp_usage(hub, _net, _pool),
+                            coordinator_key="client",
+                        )
+                        entities.append(UniFiSensorEntity(
+                            coordinator=hub.client_coordinator or hub.device_coordinator,
+                            description=dhcp_desc,
+                            hub=hub,
+                            mac=hub.gateway_mac,
+                            device_name=gw_name,
+                            device_model=gw_model,
+                        ))
         except Exception:
             _LOGGER.debug("Could not fetch network config", exc_info=True)
 

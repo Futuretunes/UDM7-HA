@@ -70,6 +70,26 @@ DEVICE_IMAGE_MAP: dict[str, tuple[str, str]] = {
         "3dac99a9-6352-44f3-ac8b-ade89c707831.png",
         "U6 Lite",
     ),
+    "U6-LR": (
+        "https://cdn.ecomm.ui.com/products/d8fee47d-b53e-4a86-a5cb-cf2f6ab1c5ef/"
+        "4f1f5856-05c2-4989-970e-6751e6af7eb9.png",
+        "U6 LR",
+    ),
+    "U6-Enterprise": (
+        "https://cdn.ecomm.ui.com/products/f9118c0f-060b-4fd7-99ce-ace671c7a1fe/"
+        "6f2a87a4-193d-43e0-b253-aa0ea0795694.png",
+        "U6 Enterprise",
+    ),
+    "U6-Mesh": (
+        "https://cdn.ecomm.ui.com/products/7b8f8da5-d684-4170-be1f-71b53af8d7f9/"
+        "fdce5345-80e9-4edd-bf5b-93cf9141649e.png",
+        "U6 Mesh",
+    ),
+    "U7-Pro": (
+        "https://cdn.ecomm.ui.com/products/fa8dd4e4-36c8-4c79-a928-22c7bff2ce29/"
+        "ab5bc8a4-6135-402e-a695-e3ea5e16d3e6.png",
+        "U7 Pro",
+    ),
     # Switches
     "USW-Flex": (
         "https://cdn.ecomm.ui.com/products/c9a07d37-b390-4a5b-89c5-3cdab8e011c7/"
@@ -80,6 +100,36 @@ DEVICE_IMAGE_MAP: dict[str, tuple[str, str]] = {
         "https://cdn.ecomm.ui.com/products/5a176b22-af34-40f2-820c-958610df1825/"
         "19394e07-5146-4f8c-b72d-7fdbdf679c97.png",
         "Switch Flex Mini",
+    ),
+    "USW-Lite-8-PoE": (
+        "https://cdn.ecomm.ui.com/products/75c44878-4e73-446e-8e86-f207db6b2b7c/"
+        "53b8b06b-69c7-424f-bb81-2f8405356c65.png",
+        "Switch Lite 8 PoE",
+    ),
+    "USW-Lite-16-PoE": (
+        "https://cdn.ecomm.ui.com/products/e726eace-a772-4f12-bfad-c68baf20e51f/"
+        "9ecfc657-5e31-4135-89b5-46b3537b35fc.png",
+        "Switch Lite 16 PoE",
+    ),
+    "USW-Pro-24-PoE": (
+        "https://cdn.ecomm.ui.com/products/5b69cdb5-e7ea-44e6-ae16-8714339038fb/"
+        "18d39964-78e7-45f9-874d-e331f1408730.png",
+        "Switch Pro 24 PoE",
+    ),
+    "USW-24-PoE": (
+        "https://cdn.ecomm.ui.com/products/467359c4-e5c3-487b-ae00-f6b7de29c6fc/"
+        "1fd41f67-8fd9-4689-989e-c03b43217e3a.png",
+        "Switch 24 PoE",
+    ),
+    "USW-Ultra": (
+        "https://cdn.ecomm.ui.com/products/d4e5408e-e2b4-4b32-b9d6-efdde2bbaaf3/"
+        "69808d5d-ba9c-4198-b3e9-749bbb02582c.png",
+        "Switch Ultra",
+    ),
+    "USW-Enterprise-24-PoE": (
+        "https://cdn.ecomm.ui.com/products/9f693a84-9dcb-452f-889a-faba29ac4b73/"
+        "5fe1f270-b8f9-4076-8cf3-805bea605720.png",
+        "Switch Enterprise 24 PoE",
     ),
 }
 

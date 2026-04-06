@@ -21,6 +21,7 @@ SERVICE_FORGET_CLIENT = "forget_client"
 SERVICE_CREATE_VOUCHER = "create_voucher"
 SERVICE_LIST_VOUCHERS = "list_vouchers"
 SERVICE_REVOKE_VOUCHER = "revoke_voucher"
+SERVICE_GENERATE_DASHBOARD = "generate_dashboard"
 
 SERVICE_RECONNECT_SCHEMA = vol.Schema({
     vol.Required("mac"): cv.string,
@@ -187,6 +188,124 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             _LOGGER.info("Revoked voucher %s", voucher_id)
             break  # only use first config entry
 
+    async def _generate_dashboard(call: ServiceCall) -> None:
+        """Generate a dashboard YAML with actual entity IDs and fire an event with the content."""
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            hub = entry.runtime_data
+
+            # Collect actual entity IDs
+            gateway_prefix = ""
+            for entity_id in hass.states.async_entity_ids("sensor"):
+                if entity_id.endswith("_cpu_usage"):
+                    state = hass.states.get(entity_id)
+                    if state:
+                        gateway_prefix = entity_id.replace("_cpu_usage", "")
+                        break
+
+            if not gateway_prefix:
+                _LOGGER.warning("Could not find gateway entities for dashboard generation")
+                return
+
+            # Extract the device name part (after "sensor.")
+            gw_name = gateway_prefix.replace("sensor.", "")
+
+            # Build the dashboard YAML
+            yaml_content = f"""title: UniFi Network
+views:
+  - title: Overview
+    path: unifi-overview
+    icon: mdi:router-wireless
+    cards:
+      - type: entities
+        title: Gateway
+        show_header_toggle: false
+        entities:
+          - entity: sensor.{gw_name}_cpu_usage
+            name: CPU
+          - entity: sensor.{gw_name}_memory_usage
+            name: Memory
+          - entity: sensor.{gw_name}_uptime
+            name: Uptime
+          - entity: sensor.{gw_name}_connected_clients
+            name: Clients
+          - entity: binary_sensor.{gw_name}_internet_connected
+            name: Internet
+      - type: glance
+        title: WAN
+        entities:
+          - entity: sensor.{gw_name}_active_wan
+            name: Active WAN
+          - entity: sensor.{gw_name}_wan1_download_rate
+            name: Download
+          - entity: sensor.{gw_name}_wan1_upload_rate
+            name: Upload
+          - entity: sensor.{gw_name}_wan1_latency
+            name: Latency
+      - type: entities
+        title: Speed Test
+        entities:
+          - entity: sensor.{gw_name}_speedtest_download
+            name: Download
+          - entity: sensor.{gw_name}_speedtest_upload
+            name: Upload
+          - entity: sensor.{gw_name}_speedtest_ping
+            name: Ping
+          - entity: button.{gw_name}_run_speedtest
+            name: Run Test
+      - type: glance
+        title: Network Health
+        entities:
+          - entity: sensor.{gw_name}_wlan_clients
+            name: WiFi
+          - entity: sensor.{gw_name}_lan_clients
+            name: LAN
+          - entity: sensor.{gw_name}_ap_count
+            name: APs
+          - entity: sensor.{gw_name}_switch_count
+            name: Switches
+          - entity: sensor.{gw_name}_wifi_experience
+            name: WiFi Score
+      - type: history-graph
+        title: WAN Throughput (24h)
+        hours_to_show: 24
+        entities:
+          - entity: sensor.{gw_name}_wan1_download_rate
+            name: Download
+          - entity: sensor.{gw_name}_wan1_upload_rate
+            name: Upload
+  - title: Security
+    path: unifi-security
+    icon: mdi:shield-check
+    cards:
+      - type: entities
+        title: Alerts
+        entities:
+          - entity: sensor.{gw_name}_alarm_count
+            name: Active Alarms
+          - entity: sensor.{gw_name}_latest_alarm
+            name: Latest
+          - entity: button.{gw_name}_archive_alarms
+            name: Archive All
+"""
+
+            # Fire event with the YAML content
+            hass.bus.async_fire(f"{DOMAIN}_dashboard_generated", {
+                "yaml": yaml_content,
+                "gateway": gw_name,
+            })
+
+            # Also try to write to a file
+            try:
+                import os
+                output_path = hass.config.path("unifi_dashboard.yaml")
+                with open(output_path, "w") as f:
+                    f.write(yaml_content)
+                _LOGGER.info("Dashboard YAML written to %s", output_path)
+            except Exception:
+                _LOGGER.debug("Could not write dashboard file", exc_info=True)
+
+            break  # only first entry
+
     hass.services.async_register(
         DOMAIN, SERVICE_RECONNECT_CLIENT, _reconnect_client,
         schema=SERVICE_RECONNECT_SCHEMA,
@@ -221,6 +340,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         DOMAIN, SERVICE_REVOKE_VOUCHER, _revoke_voucher,
         schema=SERVICE_REVOKE_VOUCHER_SCHEMA,
     )
+    hass.services.async_register(
+        DOMAIN, SERVICE_GENERATE_DASHBOARD, _generate_dashboard,
+    )
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
@@ -234,3 +356,4 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_CREATE_VOUCHER)
     hass.services.async_remove(DOMAIN, SERVICE_LIST_VOUCHERS)
     hass.services.async_remove(DOMAIN, SERVICE_REVOKE_VOUCHER)
+    hass.services.async_remove(DOMAIN, SERVICE_GENERATE_DASHBOARD)

@@ -37,6 +37,7 @@ from .const import (
     CONF_CLIENT_HEARTBEAT,
     CONF_CLOUD_API_KEY,
     CONF_CLOUD_ENABLED,
+    CONF_ENABLE_ACCESS,
     CONF_ENABLE_ALARMS,
     CONF_ENABLE_CLIENT_CONTROLS,
     CONF_ENABLE_CLOUD,
@@ -45,6 +46,7 @@ from .const import (
     CONF_ENABLE_DPI,
     CONF_ENABLE_PER_CLIENT_SENSORS,
     CONF_ENABLE_PROTECT,
+    CONF_ENABLE_TALK,
     CONF_ENABLE_VPN,
     CONF_ENABLE_WAN_MONITORING,
     CONF_HOST,
@@ -163,6 +165,9 @@ STEP_FEATURES_SCHEMA = vol.Schema(
         vol.Required(CONF_ENABLE_VPN, default=True): BooleanSelector(),
         # Group 3 — Protect / NVR
         vol.Required(CONF_ENABLE_PROTECT, default=False): BooleanSelector(),
+        # Group 3b — Access / Talk
+        vol.Required(CONF_ENABLE_ACCESS, default=False): BooleanSelector(),
+        vol.Required(CONF_ENABLE_TALK, default=False): BooleanSelector(),
         # Group 4 — Advanced
         vol.Required(CONF_ENABLE_PER_CLIENT_SENSORS, default=False): BooleanSelector(),
         vol.Required(CONF_ENABLE_CLIENT_CONTROLS, default=True): BooleanSelector(),
@@ -628,6 +633,15 @@ class UniFiNetworkHAOptionsFlow(OptionsFlow):
                 vol.Required(
                     CONF_ENABLE_PROTECT,
                     default=current.get(CONF_ENABLE_PROTECT, False),
+                ): BooleanSelector(),
+                # ── Group 3b — Access / Talk ─────────────────────────
+                vol.Required(
+                    CONF_ENABLE_ACCESS,
+                    default=current.get(CONF_ENABLE_ACCESS, False),
+                ): BooleanSelector(),
+                vol.Required(
+                    CONF_ENABLE_TALK,
+                    default=current.get(CONF_ENABLE_TALK, False),
                 ): BooleanSelector(),
                 # ── Group 4 — Advanced ────────────────────────────────
                 vol.Required(

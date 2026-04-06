@@ -20,7 +20,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_ENABLE_DEVICE_SENSORS, CONF_ENABLE_PROTECT, CONF_ENABLE_VPN
+from .const import CONF_ENABLE_ACCESS, CONF_ENABLE_DEVICE_SENSORS, CONF_ENABLE_PROTECT, CONF_ENABLE_VPN
 from .coordinators.base import UniFiDataUpdateCoordinator
 from .entity import UniFiEntity
 from .hub import UniFiHub
@@ -64,6 +64,7 @@ def _get_coordinator(hub: UniFiHub, key: str) -> UniFiDataUpdateCoordinator:
         "health": hub.health_coordinator,
         "wan_rate": hub.wan_rate_coordinator,
         "protect": hub.protect_coordinator,
+        "access": hub.access_coordinator,
     }
     coordinator = mapping.get(key)
     if coordinator is None:
@@ -303,6 +304,18 @@ def _camera_connected(hub: UniFiHub, cam_id: str) -> bool | None:
 
 
 # ---------------------------------------------------------------------------
+# Access device helpers
+# ---------------------------------------------------------------------------
+
+def _access_device_connected(hub: UniFiHub, dev_id: str) -> bool | None:
+    """Return whether the Access device with *dev_id* is connected."""
+    if not hub.access_coordinator:
+        return None
+    device = hub.access_coordinator.devices.get(dev_id)
+    return device.is_connected if device else None
+
+
+# ---------------------------------------------------------------------------
 # Binary sensor entity
 # ---------------------------------------------------------------------------
 
@@ -456,6 +469,32 @@ async def async_setup_entry(
             entities.append(
                 UniFiBinarySensorEntity(
                     coordinator=hub.protect_coordinator,
+                    description=desc,
+                    hub=hub,
+                    mac=hub.gateway_mac,
+                    device_name=gw_name,
+                    device_model=gw_model,
+                )
+            )
+
+    # -- Access device binary sensors (connectivity) -----------------------
+    if (
+        hub.get_option(CONF_ENABLE_ACCESS, False)
+        and hub.access_coordinator is not None
+        and hub.access_coordinator.available
+    ):
+        for dev_id, device in hub.access_coordinator.devices.items():
+            dev_display_name = device.name or device.model or f"Access {dev_id[:8]}"
+            desc = UniFiBinarySensorDescription(
+                key=f"access_{dev_id}_connected",
+                name=f"{dev_display_name} connected",
+                device_class=BinarySensorDeviceClass.CONNECTIVITY,
+                value_fn=lambda hub, _id=dev_id: _access_device_connected(hub, _id),
+                coordinator_key="access",
+            )
+            entities.append(
+                UniFiBinarySensorEntity(
+                    coordinator=hub.access_coordinator,
                     description=desc,
                     hub=hub,
                     mac=hub.gateway_mac,

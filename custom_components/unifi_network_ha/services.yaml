@@ -137,3 +137,7 @@ revoke_voucher:
       required: true
       selector:
         text:
+
+generate_dashboard:
+  name: Generate Dashboard
+  description: Generate a Lovelace dashboard YAML with your actual entity IDs. The YAML is saved to your HA config directory as unifi_dashboard.yaml and also fired as an event.

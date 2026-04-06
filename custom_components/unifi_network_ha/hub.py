@@ -28,10 +28,12 @@ from .const import (
     CONF_UPDATE_INTERVAL_DPI,
     CONF_UPDATE_INTERVAL_CLOUD,
     CONF_UPDATE_INTERVAL_TRAFFIC,
+    CONF_ENABLE_ACCESS,
     CONF_ENABLE_DPI,
     CONF_ENABLE_ALARMS,
     CONF_ENABLE_CLOUD,
     CONF_ENABLE_PROTECT,
+    CONF_ENABLE_TALK,
     DEFAULT_UPDATE_INTERVAL_DEVICES,
     DEFAULT_UPDATE_INTERVAL_CLIENTS,
     DEFAULT_UPDATE_INTERVAL_HEALTH,
@@ -48,10 +50,13 @@ from .api.local_legacy import LocalLegacyApi
 from .api.local_v2 import LocalV2Api
 from .api.local_integration import LocalIntegrationApi
 from .api.cloud import CloudApi
+from .api.access import AccessApi
 from .api.protect import ProtectApi
+from .api.talk import TalkApi
 from .api.websocket import UniFiWebSocket, WebSocketMessageType
 
 if TYPE_CHECKING:
+    from .coordinators.access import AccessCoordinator
     from .coordinators.alarm import AlarmCoordinator
     from .coordinators.client import ClientCoordinator
     from .coordinators.cloud import CloudCoordinator
@@ -85,6 +90,8 @@ class UniFiHub:
         self.integration: LocalIntegrationApi | None = None
         self.cloud: CloudApi | None = None
         self.protect: ProtectApi | None = None
+        self.access: AccessApi | None = None
+        self.talk: TalkApi | None = None
         self.websocket: UniFiWebSocket | None = None
 
         # Coordinators (initialized in _setup_coordinators)
@@ -96,6 +103,7 @@ class UniFiHub:
         self.dpi_coordinator: DpiCoordinator | None = None
         self.cloud_coordinator: CloudCoordinator | None = None
         self.protect_coordinator: ProtectCoordinator | None = None
+        self.access_coordinator: AccessCoordinator | None = None
         self.traffic_coordinator: TrafficCoordinator | None = None
 
         # Gateway info (detected during setup)
@@ -164,6 +172,34 @@ class UniFiHub:
                     _LOGGER.debug("Protect API setup skipped", exc_info=True)
                     self.protect = None
 
+            # 4c. Set up Access API (for door locks / access control)
+            if self.get_option(CONF_ENABLE_ACCESS, False):
+                try:
+                    self.access = AccessApi(
+                        host=self._host,
+                        port=self._port,
+                        session=session,
+                        verify_ssl=self._verify_ssl,
+                        auth=auth,
+                    )
+                except Exception:
+                    _LOGGER.debug("Access API setup skipped", exc_info=True)
+                    self.access = None
+
+            # 4d. Set up Talk API (for intercoms / phones)
+            if self.get_option(CONF_ENABLE_TALK, False):
+                try:
+                    self.talk = TalkApi(
+                        host=self._host,
+                        port=self._port,
+                        session=session,
+                        verify_ssl=self._verify_ssl,
+                        auth=auth,
+                    )
+                except Exception:
+                    _LOGGER.debug("Talk API setup skipped", exc_info=True)
+                    self.talk = None
+
             # 5. Detect gateway device
             await self._detect_gateway()
 
@@ -200,6 +236,7 @@ class UniFiHub:
             self.dpi_coordinator,
             self.cloud_coordinator,
             self.protect_coordinator,
+            self.access_coordinator,
             self.traffic_coordinator,
         ]:
             if coordinator:
@@ -406,6 +443,20 @@ class UniFiHub:
             except Exception:
                 _LOGGER.debug("Protect coordinator setup failed", exc_info=True)
                 self.protect_coordinator = None
+
+        # Access coordinator (optional, for gateways with UniFi Access)
+        if self.access is not None and self.get_option(CONF_ENABLE_ACCESS, False):
+            from .coordinators.access import AccessCoordinator
+
+            try:
+                self.access_coordinator = AccessCoordinator(self, 30)
+                await self.access_coordinator.async_config_entry_first_refresh()
+                if not self.access_coordinator.available:
+                    _LOGGER.info("UniFi Access not available on this device")
+                    self.access_coordinator = None
+            except Exception:
+                _LOGGER.debug("Access coordinator setup failed", exc_info=True)
+                self.access_coordinator = None
 
         # Cloud coordinator (optional, requires cloud API to be configured)
         if self.cloud is not None and self.get_option(CONF_ENABLE_CLOUD, True):

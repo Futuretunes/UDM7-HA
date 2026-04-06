@@ -41,6 +41,8 @@ CONF_ENABLE_ALARMS: Final = "enable_alarms"
 CONF_ENABLE_VPN: Final = "enable_vpn"
 CONF_ENABLE_CLOUD: Final = "enable_cloud"
 CONF_ENABLE_PROTECT: Final = "enable_protect"
+CONF_ENABLE_ACCESS: Final = "enable_access"
+CONF_ENABLE_TALK: Final = "enable_talk"
 
 # Feature group toggles
 CONF_ENABLE_DEVICE_SENSORS: Final = "enable_device_sensors"
@@ -117,6 +119,7 @@ PLATFORMS: Final = [
     "event",
     "image",
     "light",
+    "lock",
     "sensor",
     "switch",
     "update",

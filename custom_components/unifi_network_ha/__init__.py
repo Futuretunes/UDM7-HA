@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -11,6 +12,10 @@ from .hub import UniFiHub
 from .services import async_setup_services, async_unload_services
 
 _LOGGER = logging.getLogger(__name__)
+
+# Path to the custom Lovelace card served under /unifi_network_ha/
+CARD_DIR = Path(__file__).parent / "www"
+CARD_URL_BASE = f"/{DOMAIN}"
 
 # Type alias for config entry with our runtime data
 type UniFiConfigEntry = ConfigEntry[UniFiHub]
@@ -35,6 +40,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: UniFiConfigEntry) -> boo
     # Set up custom services (idempotent — safe to call multiple times)
     await async_setup_services(hass)
 
+    # Register the custom Lovelace card (idempotent)
+    await _async_register_card(hass)
+
     return True
 
 
@@ -57,3 +65,41 @@ async def async_unload_entry(hass: HomeAssistant, entry: UniFiConfigEntry) -> bo
 async def _async_update_listener(hass: HomeAssistant, entry: UniFiConfigEntry) -> None:
     """Handle options update by reloading the entry."""
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def _async_register_card(hass: HomeAssistant) -> None:
+    """Register the custom Lovelace card static path and frontend resource.
+
+    This is idempotent — safe to call on every config-entry setup.
+    The card JS is served at ``/unifi_network_ha/unifi-network-card.js``
+    and automatically added to Lovelace resources so users do not need
+    to add it manually.
+    """
+    card_file = CARD_DIR / "unifi-network-card.js"
+    if not card_file.is_file():
+        _LOGGER.debug("Custom card file not found at %s", card_file)
+        return
+
+    # Register static path (idempotent — HA ignores duplicate registrations)
+    card_url = f"{CARD_URL_BASE}/unifi-network-card.js"
+    hass.http.register_static_path(card_url, str(card_file), cache_headers=False)
+
+    # Add the resource to Lovelace so the card is available without manual config
+    _register_frontend_resource(hass, card_url)
+
+
+def _register_frontend_resource(hass: HomeAssistant, url: str) -> None:
+    """Add *url* to the Lovelace extra-module list so the card auto-loads.
+
+    Uses the ``frontend.add_extra_js_url`` helper when available.
+    """
+    # add_extra_js_url is the lightest way to inject a JS module
+    try:
+        from homeassistant.components.frontend import add_extra_js_url  # noqa: WPS433
+        add_extra_js_url(hass, url)
+        _LOGGER.debug("Registered custom card resource: %s", url)
+    except ImportError:
+        _LOGGER.warning(
+            "Could not auto-register custom card.  Add %s as a Lovelace resource manually.",
+            url,
+        )
