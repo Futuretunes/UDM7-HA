@@ -785,28 +785,47 @@ async def async_setup_entry(
     if hub.get_option(CONF_ENABLE_DEVICE_CONTROLS, True) and hub.v2 is not None and hub.device_coordinator is not None:
         try:
             raw_policies = await hub.v2.get_firewall_policies()
+
+            # Fetch firewall zones to resolve zone IDs → friendly names
+            zone_map: dict[str, str] = {}
+            try:
+                raw_zones = await hub.v2.get_firewall_zones()
+                for z in raw_zones:
+                    zone_id = z.get("_id", z.get("id", ""))
+                    zone_name = z.get("name", "")
+                    if zone_id and zone_name:
+                        zone_map[zone_id] = zone_name
+                _LOGGER.debug("Loaded %d firewall zones: %s", len(zone_map), list(zone_map.values()))
+            except Exception:
+                _LOGGER.debug("Could not fetch firewall zones", exc_info=True)
+
             policy_cache: dict[str, FirewallPolicy] = {}
             for raw in raw_policies:
                 policy = FirewallPolicy.from_dict(raw)
                 if policy.id and policy.name:
+                    # Resolve zone IDs to human-readable names
+                    if zone_map:
+                        policy.resolve_zone_names(zone_map)
                     policy_cache[policy.id] = policy
 
             hub._fw_policy_cache = policy_cache  # noqa: SLF001
 
-            # Count duplicate names so we can number them
+            # Use display_name which includes zone context if available.
+            # Fall back to numbering only if display_name still produces duplicates.
             name_counts: dict[str, int] = {}
             name_seen: dict[str, int] = {}
             for policy in policy_cache.values():
-                name_counts[policy.name] = name_counts.get(policy.name, 0) + 1
+                dn = policy.display_name
+                name_counts[dn] = name_counts.get(dn, 0) + 1
 
             for policy in policy_cache.values():
-                # Build a unique display name
-                if name_counts.get(policy.name, 1) > 1:
-                    seq = name_seen.get(policy.name, 0) + 1
-                    name_seen[policy.name] = seq
-                    display = f"Firewall {policy.name} {seq}"
+                dn = policy.display_name
+                if name_counts.get(dn, 1) > 1:
+                    seq = name_seen.get(dn, 0) + 1
+                    name_seen[dn] = seq
+                    display = f"Firewall {dn} {seq}"
                 else:
-                    display = f"Firewall {policy.name}"
+                    display = f"Firewall {dn}"
 
                 entity = UniFiFirewallPolicySwitch(
                     coordinator=hub.device_coordinator,

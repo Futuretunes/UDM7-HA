@@ -987,17 +987,24 @@ class FirewallPolicy:
 
     @classmethod
     def from_dict(cls, data: dict) -> Self:
-        # Extract source/destination context for better naming
-        src_zone = str(data.get("source_zone", data.get("src_zone", "")))
-        dst_zone = str(data.get("destination_zone", data.get("dst_zone", "")))
-        src_net = str(data.get("source_network_id", data.get("source_network", "")))
-        dst_net = str(data.get("destination_network_id", data.get("destination_network", "")))
-        # Some policies use source/destination firewall groups
-        if not src_zone:
-            src_zone = str(data.get("source_firewall_group_ids", [""])[0]) if data.get("source_firewall_group_ids") else ""
-        if not dst_zone:
-            dst_zone = str(data.get("destination_firewall_group_ids", [""])[0]) if data.get("destination_firewall_group_ids") else ""
-        protocol = str(data.get("protocol", data.get("protocol_match_type", "")))
+        # The v2 API nests zone info inside "source" and "destination" dicts.
+        # The compound _id encodes: {src_zone_id}{dst_zone_id}{index}
+        source = data.get("source", {}) or {}
+        destination = data.get("destination", {}) or {}
+
+        # Extract zone IDs from nested source/destination
+        src_zone = ""
+        dst_zone = ""
+        src_net = ""
+        dst_net = ""
+        if isinstance(source, dict):
+            src_zone = str(source.get("zone_id", source.get("zone", "")))
+            src_net = str(source.get("network_id", source.get("network", "")))
+        if isinstance(destination, dict):
+            dst_zone = str(destination.get("zone_id", destination.get("zone", "")))
+            dst_net = str(destination.get("network_id", destination.get("network", "")))
+
+        protocol = str(data.get("protocol", ""))
         return cls(
             id=str(data.get("_id", data.get("id", ""))),
             name=str(data.get("name", data.get("description", ""))),
@@ -1010,6 +1017,13 @@ class FirewallPolicy:
             protocol=protocol,
             raw=data,
         )
+
+    def resolve_zone_names(self, zone_map: dict[str, str]) -> None:
+        """Replace zone IDs with human-readable zone names."""
+        if self.source_zone and self.source_zone in zone_map:
+            self.source_zone = zone_map[self.source_zone]
+        if self.dest_zone and self.dest_zone in zone_map:
+            self.dest_zone = zone_map[self.dest_zone]
 
     @property
     def display_name(self) -> str:
@@ -1025,11 +1039,6 @@ class FirewallPolicy:
             zones.append(self.dest_zone)
         if zones:
             parts.append(f"({' → '.join(zones)})")
-        elif self.action:
-            parts.append(f"({self.action})")
-        # Use the short ID suffix to disambiguate identical names
-        if not zones and self.id:
-            parts.append(f"[{self.id[-6:]}]")
         return " ".join(parts) if parts else f"Policy {self.id[:8]}"
 
 
