@@ -39,6 +39,7 @@ from .const import (
     CONF_ENABLE_PER_CLIENT_SENSORS,
     CONF_ENABLE_PROTECT,
     CONF_ENABLE_VPN,
+    DOMAIN,
     DeviceState,
 )
 from .coordinators.base import UniFiDataUpdateCoordinator
