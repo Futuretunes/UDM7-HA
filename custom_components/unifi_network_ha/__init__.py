@@ -40,8 +40,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: UniFiConfigEntry) -> boo
     # Set up custom services (idempotent — safe to call multiple times)
     await async_setup_services(hass)
 
-    # Register the custom Lovelace card (idempotent)
-    await _async_register_card(hass)
+    # Register the custom Lovelace card (idempotent, never crash the integration)
+    try:
+        await _async_register_card(hass)
+    except Exception:
+        _LOGGER.debug("Custom card registration failed (non-fatal)", exc_info=True)
 
     return True
 

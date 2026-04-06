@@ -201,14 +201,13 @@ class UniFiClientTracker(CoordinatorEntity[ClientCoordinator], ScannerEntity):
         name = "Unknown"
         if client:
             name = client.name or client.hostname or client.mac
-        info = DeviceInfo(
+        return DeviceInfo(
             identifiers={(DOMAIN, self._client_mac)},
             connections={(CONNECTION_NETWORK_MAC, self._client_mac)},
-            name=name,
-            default_name=self._client_mac,
+            name=name if name != self._client_mac else f"Client {self._client_mac}",
             manufacturer=client.oui if client and client.oui else "Unknown",
+            model="Network Client",
         )
-        return info
 
 
 # ---------------------------------------------------------------------------
