@@ -1,4 +1,4 @@
-# Advanced UniFi Network HA
+# UniFi Network Advanced
 
 A comprehensive [Home Assistant](https://www.home-assistant.io/) custom integration for **all UniFi gateways and network devices**. Combines the features of four existing UniFi integrations into one, and adds WAN failover detection, IDS/IPS alerts, VPN monitoring, DPI traffic analysis, and cloud ISP metrics.
 
@@ -57,7 +57,7 @@ All adopted APs and switches are also monitored.
 1. Open HACS in Home Assistant
 2. Click the three dots in the top right and select **Custom repositories**
 3. Add `https://github.com/Futuretunes/advanced-unifi-network-ha` with category **Integration**
-4. Search for "Advanced UniFi Network HA" and install
+4. Search for "UniFi Network Advanced" and install
 5. Restart Home Assistant
 
 ### Manual
@@ -67,7 +67,7 @@ All adopted APs and switches are also monitored.
 
 ## Configuration
 
-Add the integration via **Settings > Devices & Services > Add Integration > Advanced UniFi Network HA**.
+Add the integration via **Settings > Devices & Services > Add Integration > UniFi Network Advanced**.
 
 ### Setup steps
 
@@ -404,7 +404,7 @@ This integration uses a separate domain (`unifi_network_ha`) and unique ID names
 
 ## Options
 
-After setup, configure via **Settings > Devices & Services > Advanced UniFi Network HA > Configure**:
+After setup, configure via **Settings > Devices & Services > UniFi Network Advanced > Configure**:
 
 - **Features** — Enable/disable device tracking, WAN monitoring, DPI, alarms, VPN
 - **Update intervals** — Adjust polling frequency for each coordinator (5s to 3600s)
@@ -422,7 +422,7 @@ The integration organises features into toggle groups so you can enable only wha
 | **Protect / NVR** | Off | NVR storage, camera sensors, per-camera binary sensors |
 | **Advanced** | Off | Per-client sensors (creates entities for every connected client) |
 
-Toggle groups are accessible at **Settings > Devices & Services > Advanced UniFi Network HA > Configure > Features**.
+Toggle groups are accessible at **Settings > Devices & Services > UniFi Network Advanced > Configure > Features**.
 
 ## Automation Blueprints
 
@@ -465,7 +465,7 @@ An example Lovelace dashboard is provided at [`examples/dashboard.yaml`](example
 
 ### Diagnostics
 
-Go to **Settings > Devices & Services > Advanced UniFi Network HA > three dots > Download diagnostics** for a redacted snapshot of your integration state.
+Go to **Settings > Devices & Services > UniFi Network Advanced > three dots > Download diagnostics** for a redacted snapshot of your integration state.
 
 ### Logs
 

@@ -2,7 +2,7 @@ blueprint:
   name: "UniFi New Device Alert"
   description: "Get notified when a previously unseen device connects to your UniFi network."
   domain: automation
-  author: "Advanced UniFi Network HA"
+  author: "UniFi Network Advanced"
   input:
     notify_service:
       name: Notification Service

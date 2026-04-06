@@ -2,7 +2,7 @@ blueprint:
   name: "UniFi Scheduled Device Restart"
   description: "Restart a UniFi device on a regular schedule (e.g., weekly AP restart)."
   domain: automation
-  author: "Advanced UniFi Network HA"
+  author: "UniFi Network Advanced"
   input:
     restart_button:
       name: Restart Button

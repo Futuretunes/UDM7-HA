@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "connection": {
-        "title": "Advanced UniFi Network HA",
+        "title": "UniFi Network Advanced",
         "description": "Choose how to connect to your UniFi Network controller.",
         "data": {
           "connection_type": "Connection type"
@@ -100,7 +100,7 @@
     "step": {
       "init": {
         "title": "Options",
-        "description": "Configure the Advanced UniFi Network HA integration.",
+        "description": "Configure the UniFi Network Advanced integration.",
         "menu_options": {
           "features": "Features",
           "client_tracking": "Client tracking",

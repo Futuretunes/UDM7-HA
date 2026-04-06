@@ -1,6 +1,6 @@
 {
   "domain": "unifi_network_ha",
-  "name": "Advanced UniFi Network HA",
+  "name": "UniFi Network Advanced",
   "codeowners": ["@mikula"],
   "config_flow": true,
   "documentation": "https://github.com/Futuretunes/advanced-unifi-network-ha",
@@ -8,5 +8,5 @@
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/Futuretunes/advanced-unifi-network-ha/issues",
   "requirements": [],
-  "version": "0.3.7"
+  "version": "0.3.8"
 }

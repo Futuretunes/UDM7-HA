@@ -2,7 +2,7 @@ blueprint:
   name: "UniFi Scheduled Speedtest"
   description: "Run a WAN speedtest on a regular schedule and optionally notify with results."
   domain: automation
-  author: "Advanced UniFi Network HA"
+  author: "UniFi Network Advanced"
   input:
     speedtest_button:
       name: Speedtest Button

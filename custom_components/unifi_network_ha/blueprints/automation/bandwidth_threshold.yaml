@@ -2,7 +2,7 @@ blueprint:
   name: "UniFi Bandwidth Threshold Alert"
   description: "Get notified when your WAN download or upload rate exceeds a defined threshold."
   domain: automation
-  author: "Advanced UniFi Network HA"
+  author: "UniFi Network Advanced"
   input:
     bandwidth_sensor:
       name: WAN Bandwidth Sensor

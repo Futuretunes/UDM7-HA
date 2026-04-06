@@ -2,7 +2,7 @@ blueprint:
   name: "UniFi WAN Failover Notification"
   description: "Send a notification when your UniFi gateway switches between WAN connections (failover or recovery)."
   domain: automation
-  author: "Advanced UniFi Network HA"
+  author: "UniFi Network Advanced"
   input:
     failover_entity:
       name: WAN Failover Event Entity

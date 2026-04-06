@@ -2,7 +2,7 @@ blueprint:
   name: "UniFi IPS Threat Alert"
   description: "Get notified when your UniFi gateway detects an intrusion attempt or security threat via IDS/IPS."
   domain: automation
-  author: "Advanced UniFi Network HA"
+  author: "UniFi Network Advanced"
   input:
     ips_event_entity:
       name: IPS Alert Event Entity
