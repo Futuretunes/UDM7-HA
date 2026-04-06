@@ -1565,13 +1565,12 @@ class UniFiClientSensorEntity(UniFiSensorEntity):
         client = None
         if self._hub.client_coordinator:
             client = self._hub.client_coordinator.all_known.get(self._device_mac)
-        info = DeviceInfo(
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_mac)},
             connections={(CONNECTION_NETWORK_MAC, self._device_mac)},
             name=self._device_name,
+            manufacturer=client.oui if client and client.oui else "Unknown",
         )
-        if client and client.oui:
-            info["manufacturer"] = client.oui
-        return info
 
 
 # ---------------------------------------------------------------------------

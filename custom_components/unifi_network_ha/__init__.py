@@ -80,26 +80,30 @@ async def _async_register_card(hass: HomeAssistant) -> None:
         _LOGGER.debug("Custom card file not found at %s", card_file)
         return
 
-    # Register static path (idempotent — HA ignores duplicate registrations)
     card_url = f"{CARD_URL_BASE}/unifi-network-card.js"
-    hass.http.register_static_path(card_url, str(card_file), cache_headers=False)
+
+    # Register static path — API changed in recent HA versions
+    try:
+        from homeassistant.components.http import StaticPathConfig  # HA 2025.7+
+
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(card_url, str(card_file), cache_headers=False)]
+        )
+    except (ImportError, AttributeError):
+        try:
+            hass.http.register_static_path(card_url, str(card_file), cache_headers=False)
+        except AttributeError:
+            _LOGGER.debug("Could not register static path for custom card")
+            return
 
     # Add the resource to Lovelace so the card is available without manual config
-    _register_frontend_resource(hass, card_url)
-
-
-def _register_frontend_resource(hass: HomeAssistant, url: str) -> None:
-    """Add *url* to the Lovelace extra-module list so the card auto-loads.
-
-    Uses the ``frontend.add_extra_js_url`` helper when available.
-    """
-    # add_extra_js_url is the lightest way to inject a JS module
     try:
-        from homeassistant.components.frontend import add_extra_js_url  # noqa: WPS433
-        add_extra_js_url(hass, url)
-        _LOGGER.debug("Registered custom card resource: %s", url)
-    except ImportError:
-        _LOGGER.warning(
-            "Could not auto-register custom card.  Add %s as a Lovelace resource manually.",
-            url,
+        from homeassistant.components.frontend import add_extra_js_url
+
+        add_extra_js_url(hass, card_url)
+        _LOGGER.debug("Registered custom card resource: %s", card_url)
+    except (ImportError, AttributeError):
+        _LOGGER.info(
+            "Add %s as a Lovelace resource manually (Settings > Dashboards > Resources)",
+            card_url,
         )
