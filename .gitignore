@@ -12,3 +12,4 @@ venv/
 .env
 .claude/
 UNIFI_API_REFERENCE.md
+.DS_Store
