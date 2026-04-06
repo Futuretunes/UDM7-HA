@@ -71,9 +71,13 @@ class UniFiEntity(CoordinatorEntity[UniFiDataUpdateCoordinator]):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device registry information for this entity."""
-        return DeviceInfo(
+        info = DeviceInfo(
             identifiers={(DOMAIN, self._device_mac)},
             name=self._device_name,
             manufacturer=MANUFACTURER,
             model=self._device_model,
         )
+        # Link non-gateway devices to the gateway → creates device hierarchy
+        if self._hub.gateway_mac and self._device_mac != self._hub.gateway_mac:
+            info["via_device"] = (DOMAIN, self._hub.gateway_mac)
+        return info

@@ -201,13 +201,21 @@ class UniFiClientTracker(CoordinatorEntity[ClientCoordinator], ScannerEntity):
         name = "Unknown"
         if client:
             name = client.name or client.hostname or client.mac
-        return DeviceInfo(
+        info = DeviceInfo(
             identifiers={(DOMAIN, self._client_mac)},
             connections={(CONNECTION_NETWORK_MAC, self._client_mac)},
             name=name if name != self._client_mac else f"Client {self._client_mac}",
             manufacturer=client.oui if client and client.oui else "Unknown",
             model="Network Client",
         )
+        # Link clients to their connected AP/switch → creates device hierarchy
+        if client:
+            parent_mac = client.ap_mac or client.sw_mac
+            if parent_mac:
+                info["via_device"] = (DOMAIN, parent_mac)
+            elif self._hub.gateway_mac:
+                info["via_device"] = (DOMAIN, self._hub.gateway_mac)
+        return info
 
 
 # ---------------------------------------------------------------------------
