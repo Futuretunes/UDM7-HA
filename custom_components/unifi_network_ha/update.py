@@ -14,11 +14,12 @@ from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityDescription
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .const import DOMAIN, MANUFACTURER
 from .coordinators.base import UniFiDataUpdateCoordinator
-from .entity import UniFiEntity
 from .hub import UniFiHub
 
 # Type alias used in __init__.py — import so the platform signature matches.
@@ -32,12 +33,11 @@ _LOGGER = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-class UniFiUpdateEntity(UniFiEntity, UpdateEntity):
+class UniFiUpdateEntity(CoordinatorEntity[UniFiDataUpdateCoordinator], UpdateEntity):
     """Firmware update entity for a UniFi network device."""
 
-    _attr_supported_features = (
-        UpdateEntityFeature.INSTALL
-    )
+    _attr_has_entity_name = True
+    _attr_supported_features = UpdateEntityFeature.INSTALL
     _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(
@@ -48,10 +48,23 @@ class UniFiUpdateEntity(UniFiEntity, UpdateEntity):
         device_name: str,
         device_model: str,
     ) -> None:
-        desc = EntityDescription(key="firmware_update")
-        super().__init__(coordinator, desc, hub, mac, device_name, device_model)
+        super().__init__(coordinator)
+        self._hub = hub
+        self._device_mac = mac
+        self._device_name = device_name
+        self._device_model = device_model
+        self._attr_unique_id = f"{mac}_firmware_update"
         self._attr_name = "Firmware"
         self._attr_title = f"{device_name} firmware"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_mac)},
+            name=self._device_name,
+            manufacturer=MANUFACTURER,
+            model=self._device_model,
+        )
 
     @property
     def installed_version(self) -> str | None:

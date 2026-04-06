@@ -97,12 +97,14 @@ class UniFiBlockClientSwitch(CoordinatorEntity[ClientCoordinator], SwitchEntity)
         name = "Unknown"
         if client:
             name = client.name or client.hostname or client.mac
-        return DeviceInfo(
+        info = DeviceInfo(
             connections={(CONNECTION_NETWORK_MAC, self._client_mac)},
             name=name,
-            manufacturer=client.oui if client and client.oui else None,
             default_name=self._client_mac,
         )
+        if client and client.oui:
+            info["manufacturer"] = client.oui
+        return info
 
 
 # ===========================================================================
